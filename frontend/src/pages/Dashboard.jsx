@@ -67,12 +67,6 @@ export default function Dashboard({ session }) {
     // -- LOGIC --
 
     const now = new Date()
-    console.log("DASHBOARD DEBUG:", {
-        now: now.toISOString(),
-        rosterOpenTime: rosterOpenTime?.toISOString(),
-        isBefore: now < rosterOpenTime,
-        nextEvent: nextEvent
-    })
 
     // Lists
     const eventList = signups.filter(s => s.list_type === 'EVENT')
@@ -93,6 +87,12 @@ export default function Dashboard({ session }) {
     // Spec: "If a user is in the USER_GROUP associated with the Event"
     // PROVISIONAL: We assume the user is a member if they have a non-null user_group_id.
     const isMember = userProfile?.user_group_id != null
+
+    const safeDate = (d) => {
+        if (!d) return 'TBD'
+        const date = new Date(d)
+        return isNaN(date.getTime()) ? 'Invalid Date' : date.toLocaleString()
+    }
 
     // Render Conditions
     const isRosterOpen = rosterOpenTime && now >= rosterOpenTime
@@ -146,7 +146,8 @@ export default function Dashboard({ session }) {
         </div>
     )
 
-    const eventDate = new Date(nextEvent.event_date).toLocaleString()
+    console.log("Rendering Dashboard with Event:", nextEvent)
+    const eventDate = safeDate(nextEvent.event_date)
 
     // 1. Check Cancellation
     if (isCanceled) {
@@ -167,8 +168,8 @@ export default function Dashboard({ session }) {
                     <h3>Next Event: {nextEvent.name}</h3>
                     <p className="date">{eventDate}</p>
                     <div className="alert">
-                        Roster signup opens at {rosterOpenTime?.toLocaleString()}. <br />
-                        Waitlist signup opens at {waitlistOpenTime?.toLocaleString()}.
+                        Roster signup opens at {safeDate(nextEvent.roster_sign_up_open)}. <br />
+                        Waitlist signup opens at {safeDate(nextEvent.waitlist_sign_up_open)}.
                     </div>
                 </div>
             </div>
