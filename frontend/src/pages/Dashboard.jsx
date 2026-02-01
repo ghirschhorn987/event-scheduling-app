@@ -100,62 +100,30 @@ export default function Dashboard({ session }) {
 
     // Actions
     const handleJoin = async () => {
-        if (!nextEvent || !userProfile) return
+        if (!nextEvent) return
 
-        let targetList = 'EVENT'
-        let sequence = null
+        try {
+            const response = await fetch('/api/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    event_id: nextEvent.id,
+                    user_id: session.user.id
+                })
+            })
 
-        const eventCount = eventList.length
-        const max = nextEvent.max_signups
-
-        if (isMember) {
-            // MEMBERS
-            if (eventCount < max) {
-                targetList = 'EVENT'
-                sequence = eventList.length + 1
-            } else {
-                targetList = 'WAITLIST'
-                sequence = waitList.length + 1
-            }
-        } else {
-            // NON-MEMBERS
-            if (now < reserveOpenTime) {
-                alert("Reserve sign up is not yet open")
-                return
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.detail || "Failed to join")
             }
 
-            if (now >= reserveOpenTime && now < initialReserveTime) {
-                targetList = 'WAITLIST_HOLDING'
-                sequence = -1 // Display as "-"
-            } else if (now >= initialReserveTime && now < finalReserveTime) {
-                targetList = 'WAITLIST_HOLDING'
-                // Calculate next sequence for holding
-                const maxSeq = holdingList.reduce((max, s) => (s.sequence_number > max ? s.sequence_number : max), 0)
-                sequence = maxSeq + 1
-            } else if (now >= finalReserveTime) {
-                if (eventCount < max) {
-                    targetList = 'EVENT'
-                    sequence = eventList.length + 1
-                } else {
-                    targetList = 'WAITLIST'
-                    sequence = waitList.length + 1
-                }
-            }
-        }
-
-        const { error } = await supabase.from('event_signups').insert({
-            event_id: nextEvent.id,
-            user_id: session.user.id,
-            list_type: targetList,
-            sequence_number: sequence === -1 ? null : sequence // If -1, maybe store null? or store -1.
-            // Spec says "display -". 
-        })
-
-        if (error) {
+            refresh()
+        } catch (error) {
             console.error(error)
-            alert("Failed to join: " + error.message)
+            alert(error.message)
         }
-        refresh()
     }
 
     const handleDelete = async () => {
