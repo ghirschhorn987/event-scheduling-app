@@ -7,6 +7,7 @@ COPY frontend/package*.json ./
 RUN npm ci
 
 # Copy source and build
+# Copy source and build
 COPY frontend/ ./
 RUN npm run build
 
