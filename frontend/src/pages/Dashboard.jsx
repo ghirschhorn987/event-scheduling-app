@@ -50,7 +50,24 @@ export default function Dashboard({ session }) {
                         .order('created_at', { ascending: true }) // approximate ordering
 
                     if (signupError) throw signupError
-                    setSignups(signupData || [])
+
+                    let finalSignups = signupData || []
+
+                    // -- MOCK AUTH: INJECT LOCAL SIGNUP --
+                    const useMock = import.meta.env.VITE_USE_MOCK_AUTH === 'true'
+                    if (useMock) {
+                        const mockKey = `mock-signup-${event.id}-${session.user.id}`
+                        const stored = localStorage.getItem(mockKey)
+                        if (stored) {
+                            const mockSignup = JSON.parse(stored)
+                            // Avoid duplicates if somehow it got into DB
+                            if (!finalSignups.some(s => s.user_id === mockSignup.user_id)) {
+                                finalSignups.push(mockSignup)
+                            }
+                        }
+                    }
+
+                    setSignups(finalSignups)
                 }
 
             } catch (error) {
@@ -114,9 +131,24 @@ export default function Dashboard({ session }) {
                 })
             })
 
-            if (!response.ok) {
+            let responseData = null
+            if (response.ok) {
+                responseData = await response.json()
+            } else {
                 const errorData = await response.json()
                 throw new Error(errorData.detail || "Failed to join")
+            }
+
+            // -- MOCK AUTH: SAVE LOCAL SIGNUP --
+            const useMock = import.meta.env.VITE_USE_MOCK_AUTH === 'true'
+            if (useMock && responseData && responseData.data) {
+                const mockKey = `mock-signup-${nextEvent.id}-${session.user.id}`
+                // Use the data returned by the backend which has the correct list_type/sequence logic!
+                const mockSignup = {
+                    ...responseData.data,
+                    profiles: { name: 'Mock Guest' }
+                }
+                localStorage.setItem(mockKey, JSON.stringify(mockSignup))
             }
 
             refresh()
@@ -127,6 +159,13 @@ export default function Dashboard({ session }) {
     }
 
     const handleDelete = async () => {
+        // -- MOCK AUTH: REMOVE LOCAL SIGNUP --
+        const useMock = import.meta.env.VITE_USE_MOCK_AUTH === 'true'
+        if (useMock) {
+            const mockKey = `mock-signup-${nextEvent.id}-${session.user.id}`
+            localStorage.removeItem(mockKey)
+        }
+
         const { error } = await supabase.from('event_signups').delete().eq('event_id', nextEvent.id).eq('user_id', session.user.id)
         if (error) alert(error.message)
         refresh()

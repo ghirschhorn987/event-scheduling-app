@@ -45,19 +45,57 @@ async def health_check():
 @app.post("/api/signup")
 async def signup(body: SignupRequest):
     # 1. Fetch Event & User
-    event = fetch_event(body.event_id)
-    user_id = body.user_id # In production, verify this matches auth token
-    
-    # Check if already signed up
-    existing = supabase.table("event_signups").select("*").eq("event_id", body.event_id).eq("user_id", user_id).execute()
-    if existing.data:
-        raise HTTPException(status_code=400, detail="User already signed up")
+    user_id = body.user_id 
+    print(f"Signup Request: user={user_id} event={body.event_id}")
+    try:
+        event = fetch_event(body.event_id)
+    except Exception as e:
+        print(f"Error fetching event: {e}")
+        raise HTTPException(status_code=404, detail="Event not found")
 
-    profile_res = supabase.table("profiles").select("*, user_groups(id)").eq("id", user_id).single().execute()
-    profile = profile_res.data
+    # Check if already signed up
+    # existing = supabase.table("event_signups").select("*").eq("event_id", body.event_id).eq("user_id", user_id).execute()
+    # if existing.data:
+    #     raise HTTPException(status_code=400, detail="User already signed up")
     
-    if not profile:
-        raise HTTPException(status_code=400, detail="User profile not found")
+    # --- MOCK USER HANDLING ---
+    if user_id == "mock-user-id-123":
+        print(f"Using Mock Profile for {user_id}")
+        profile = {
+            "id": user_id,
+            "email": "mock.guest@example.com",
+            # "user_groups": {"id": "..."} # Uncomment to test Member
+            "user_groups": None # Default to Guest
+        }
+    else:
+        # Real Profile Fetch
+        existing = supabase.table("event_signups").select("*").eq("event_id", body.event_id).eq("user_id", user_id).execute()
+        if existing.data:
+            raise HTTPException(status_code=400, detail="User already signed up")
+
+        try:
+            # Use maybe_single() or just execute() and check list to avoid crash on empty
+            profile_res = supabase.table("profiles").select("*, user_groups(id)").eq("id", user_id).execute()
+            if not profile_res.data:
+                # Attempt to create profile if missing (Self-healing)
+                print(f"Profile not found for {user_id}. Attempting to create...")
+                try:
+                    # We only have the ID. Name and email might be unavailable here unless passed in body
+                    # For now, create with just ID.
+                    new_profile = {"id": user_id}
+                    create_res = supabase.table("profiles").insert(new_profile).execute()
+                    profile = create_res.data[0]
+                    # Refetch with groups (will be null/guest initially)
+                    profile["user_groups"] = None 
+                except Exception as create_e:
+                    print(f"Failed to auto-create profile: {create_e}")
+                    raise HTTPException(status_code=400, detail="User profile not found and could not be created. Please contact support.")
+            else:
+                profile = profile_res.data[0]
+        except Exception as e:
+            print(f"Error fetching/creating profile: {e}")
+            if isinstance(e, HTTPException): raise e
+            raise HTTPException(status_code=500, detail=f"Database error checking profile: {str(e)}")
 
     is_member = profile.get("user_groups") is not None
     
@@ -133,8 +171,17 @@ async def signup(body: SignupRequest):
         "sequence_number": sequence
     }
     
-    res = supabase.table("event_signups").insert(payload).execute()
-    return {"status": "success", "data": res.data[0]}
+    res = None
+    if user_id == "mock-user-id-123":
+        print(f"Mock Insert bypassed. Payload: {payload}")
+        # Return fake success
+        return {
+            "status": "success", 
+            "data": {**payload, "id": "mock-signup-entry-id", "created_at": now.isoformat()}
+        }
+    else:
+        res = supabase.table("event_signups").insert(payload).execute()
+        return {"status": "success", "data": res.data[0]}
 
 
 @app.post("/api/schedule")

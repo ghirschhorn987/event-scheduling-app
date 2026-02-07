@@ -17,7 +17,7 @@ INSERT INTO events (
 )
 VALUES (
   'Weekly Basketball',
-  10,
+  15,
   NOW() + INTERVAL '7 days',                -- Event in 7 days
   NOW() + INTERVAL '1 day',                 -- Roster open in 1 day
   NOW() + INTERVAL '2 days',                -- Waitlist open in 2 days

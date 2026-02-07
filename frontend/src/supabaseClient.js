@@ -50,6 +50,9 @@ const mockProfileMember = {
 // Toggle this or control via env if needed. Default to Guest for now.
 const activeMockProfile = mockProfileGuest
 
+// -- MOCK AUTH STATE MANAGEMENT --
+const authSubscribers = new Set();
+
 export const supabase = useMock ? {
     ...realSupabase,
     auth: {
@@ -58,13 +61,28 @@ export const supabase = useMock ? {
             return { data: { session: mockSession }, error: null }
         },
         onAuthStateChange: (callback) => {
+            // Immediate callback for current state
             callback('SIGNED_IN', mockSession)
-            return { data: { subscription: { unsubscribe: () => { } } } }
+
+            // Subscribe
+            authSubscribers.add(callback)
+
+            return {
+                data: {
+                    subscription: {
+                        unsubscribe: () => authSubscribers.delete(callback)
+                    }
+                }
+            }
         },
         signInWithOAuth: async () => {
+            // Notify all subscribers
+            authSubscribers.forEach(cb => cb('SIGNED_IN', mockSession))
             return { data: { session: mockSession }, error: null }
         },
         signOut: async () => {
+            // Notify all subscribers
+            authSubscribers.forEach(cb => cb('SIGNED_OUT', null))
             return { error: null }
         }
     },

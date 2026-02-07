@@ -190,3 +190,58 @@ header {
     color: #facc15;
     border-color: rgba(234, 179, 8, 0.2);
 }
+
+/* Auth Form Styles */
+.input-field {
+    padding: 0.75rem;
+    border: 1px solid #ccc; /* fallback */
+    border: 1px solid #334155;
+    border-radius: 4px;
+    background: #0f172a;
+    color: white;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.input-field:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.divider {
+    text-align: center;
+    margin: 1rem 0;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    position: relative;
+}
+
+.divider::before, .divider::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 45%;
+    height: 1px;
+    background: #334155;
+}
+
+.divider::before { left: 0; }
+.divider::after { right: 0; }
+
+a {
+    color: var(--primary);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.auth-links {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
