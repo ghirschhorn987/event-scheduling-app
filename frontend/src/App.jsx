@@ -6,6 +6,9 @@ import UpdatePassword from './pages/UpdatePassword'
 import Login from './components/Auth/Login'
 import Signup from './components/Auth/Signup'
 import PasswordReset from './components/Auth/PasswordReset'
+import MockAuthToolbar from './components/MockAuthToolbar'
+import RequestAccess from './pages/RequestAccess'
+import AdminDashboard from './pages/AdminDashboard'
 
 function App() {
     const [session, setSession] = useState(null)
@@ -31,13 +34,16 @@ function App() {
 
     return (
         <Router>
+            <MockAuthToolbar />
             <div className="app-container">
                 <main className={!session ? "login-page" : ""}>
                     <Routes>
                         <Route path="/login" element={!session ? <Login /> : <Navigate to="/dashboard" />} />
                         <Route path="/signup" element={!session ? <Signup /> : <Navigate to="/dashboard" />} />
+                        <Route path="/request-access" element={!session ? <RequestAccess /> : <Navigate to="/dashboard" />} />
                         <Route path="/forgot-password" element={!session ? <PasswordReset /> : <Navigate to="/dashboard" />} />
                         <Route path="/dashboard" element={session ? <Dashboard session={session} /> : <Navigate to="/login" />} />
+                        <Route path="/admin" element={session ? <AdminDashboard session={session} /> : <Navigate to="/login" />} />
                         <Route path="/update-password" element={<UpdatePassword />} />
                         <Route path="/" element={<Navigate to={session ? "/dashboard" : "/login"} />} />
                     </Routes>

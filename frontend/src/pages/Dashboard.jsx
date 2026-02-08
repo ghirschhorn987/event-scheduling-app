@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { Link } from 'react-router-dom'
 
 export default function Dashboard({ session }) {
     const [loading, setLoading] = useState(true)
@@ -124,6 +125,7 @@ export default function Dashboard({ session }) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
                 },
                 body: JSON.stringify({
                     event_id: nextEvent.id,
@@ -220,7 +222,10 @@ export default function Dashboard({ session }) {
         <div className="dashboard">
             <header>
                 <h2>Dashboard</h2>
-                <div>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                    {session?.user?.email === 'mock.admin@test.com' && (
+                        <Link to="/admin" className="primary-btn" style={{ marginRight: '10px', textDecoration: 'none' }}>Admin Panel</Link>
+                    )}
                     <span style={{ marginRight: '1rem', color: '#94a3b8' }}>{userProfile?.email} ({isMember ? "Member" : "Guest"})</span>
                     <button className="secondary-btn" onClick={() => supabase.auth.signOut()}>Sign Out</button>
                 </div>

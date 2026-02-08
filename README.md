@@ -11,6 +11,24 @@ This project has been restructured to support a **React Frontend** and a **Pytho
 
 ## Local Development
 
+**Current Location:** `~/dev/antigravity-projects/event-scheduling-app`
+
+### 0. Quick Restart
+If you just moved the project, restart your servers:
+
+**Backend:**
+```bash
+cd ~/dev/antigravity-projects/event-scheduling-app/backend
+source .venv/bin/activate
+uvicorn main:app --reload
+```
+
+**Frontend:**
+```bash
+cd ~/dev/antigravity-projects/event-scheduling-app/frontend
+npm run dev
+```
+
 ### 1. Run Frontend (React)
 Navigate to the frontend directory:
 ```bash

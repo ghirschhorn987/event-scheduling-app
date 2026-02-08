@@ -94,7 +94,8 @@ export default function Login() {
             )}
 
             <div className="auth-links">
-                <p>Don't have an account? <Link to="/signup">Sign Up</Link></p>
+                <p>New here? <Link to="/request-access" style={{ fontWeight: 'bold' }}>Request Access</Link></p>
+                <p>Has your request been approved? <Link to="/signup">Sign Up</Link></p>
                 <p><Link to="/forgot-password">Forgot Password?</Link></p>
             </div>
 

@@ -21,4 +21,17 @@ class Event(BaseModel):
     waitlist_sign_up_open: datetime
     reserve_sign_up_open: datetime
     initial_reserve_scheduling: datetime
+    initial_reserve_scheduling: datetime
     final_reserve_scheduling: datetime
+
+class RegistrationRequest(BaseModel):
+    full_name: str
+    email: str
+    affiliation: str
+    referral: Optional[str] = None
+
+class RegistrationUpdate(BaseModel):
+    request_id: str
+    action: str  # 'APPROVE' or 'DECLINE' or 'INFO'
+    role: Optional[str] = None # For approval (Primary, Secondary, etc.)
+    note: Optional[str] = None
