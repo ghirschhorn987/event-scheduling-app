@@ -239,48 +239,47 @@ async def signup(body: SignupRequest, request: Request):
     # So we simply verify they are not already signed up (below) and then insert.
     # We DO NOT return fake success anymore.
     pass
-    else:
-        # Real Profile Fetch
-        existing = supabase.table("event_signups").select("*").eq("event_id", body.event_id).eq("user_id", user_id).execute()
-        if existing.data:
-            raise HTTPException(status_code=400, detail="User already signed up")
+    # Real Profile Fetch
+    existing = supabase.table("event_signups").select("*").eq("event_id", body.event_id).eq("user_id", user_id).execute()
+    if existing.data:
+        raise HTTPException(status_code=400, detail="User already signed up")
 
-        try:
-            # Use maybe_single() or just execute() and check list to avoid crash on empty
-            profile_res = supabase.table("profiles").select("*, user_groups(id)").eq("id", user_id).execute()
-            if not profile_res.data:
-                # Attempt to create profile if missing (Self-healing)
-                print(f"Profile not found for {user_id}. Attempting to create with Service Role...")
-                try:
-                    # We utilize the 'supabase' client which should now have SERVICE ROLE capabilities from db.py
-                    new_profile = {"id": user_id}
-                    
-                    # If we have email/metadata from the auth token, we could populate it here!
-                    if auth_user.email:
-                        new_profile["email"] = auth_user.email
-                        # Attempt to get name from metadata
-                        meta = auth_user.user_metadata or {}
-                        if "full_name" in meta:
-                            new_profile["name"] = meta["full_name"]
-                    
-                    create_res = supabase.table("profiles").insert(new_profile).execute()
-                    profile = create_res.data[0]
-                    # Refetch with groups (will be null/guest initially)
-                    profile["user_groups"] = None 
-                    print(f"Successfully auto-created profile for {user_id}")
-                except Exception as create_e:
-                    print(f"Failed to auto-create profile: {create_e}")
-                    # Check if it was an RLS error (which means we still don't have Service Key)
-                    if "policy" in str(create_e):
-                        print("CRITICAL: RLS Error. SUPABASE_SERVICE_ROLE_KEY is likely missing or invalid in server environment.")
-                    
-                    raise HTTPException(status_code=400, detail="User profile not found and could not be created. Please contact support.")
-            else:
-                profile = profile_res.data[0]
-        except Exception as e:
-            print(f"Error fetching/creating profile: {e}")
-            if isinstance(e, HTTPException): raise e
-            raise HTTPException(status_code=500, detail=f"Database error checking profile: {str(e)}")
+    try:
+        # Use maybe_single() or just execute() and check list to avoid crash on empty
+        profile_res = supabase.table("profiles").select("*, user_groups(id)").eq("id", user_id).execute()
+        if not profile_res.data:
+            # Attempt to create profile if missing (Self-healing)
+            print(f"Profile not found for {user_id}. Attempting to create with Service Role...")
+            try:
+                # We utilize the 'supabase' client which should now have SERVICE ROLE capabilities from db.py
+                new_profile = {"id": user_id}
+                
+                # If we have email/metadata from the auth token, we could populate it here!
+                if auth_user.email:
+                    new_profile["email"] = auth_user.email
+                    # Attempt to get name from metadata
+                    meta = auth_user.user_metadata or {}
+                    if "full_name" in meta:
+                        new_profile["name"] = meta["full_name"]
+                
+                create_res = supabase.table("profiles").insert(new_profile).execute()
+                profile = create_res.data[0]
+                # Refetch with groups (will be null/guest initially)
+                profile["user_groups"] = None 
+                print(f"Successfully auto-created profile for {user_id}")
+            except Exception as create_e:
+                print(f"Failed to auto-create profile: {create_e}")
+                # Check if it was an RLS error (which means we still don't have Service Key)
+                if "policy" in str(create_e):
+                    print("CRITICAL: RLS Error. SUPABASE_SERVICE_ROLE_KEY is likely missing or invalid in server environment.")
+                
+                raise HTTPException(status_code=400, detail="User profile not found and could not be created. Please contact support.")
+        else:
+            profile = profile_res.data[0]
+    except Exception as e:
+        print(f"Error fetching/creating profile: {e}")
+        if isinstance(e, HTTPException): raise e
+        raise HTTPException(status_code=500, detail=f"Database error checking profile: {str(e)}")
 
     is_member = profile.get("user_groups") is not None
     
@@ -368,6 +367,22 @@ async def signup(body: SignupRequest, request: Request):
     else:
         res = supabase.table("event_signups").insert(payload).execute()
         return {"status": "success", "data": res.data[0]}
+
+
+@app.post("/api/remove-signup")
+async def remove_signup(body: SignupRequest, request: Request):
+    auth_user = await get_current_user(request)
+    
+    if auth_user.id != body.user_id:
+        raise HTTPException(status_code=403, detail="You can only remove yourself.")
+    
+    try:
+        # DB uses Service Role, so RLS bypassed.
+        res = supabase.table("event_signups").delete().eq("event_id", body.event_id).eq("user_id", body.user_id).execute()
+        return {"status": "success", "message": "Signup removed"}
+    except Exception as e:
+        print(f"Error removing signup: {e}")
+        raise HTTPException(status_code=500, detail="Failed to remove signup")
 
 
 @app.post("/api/schedule")

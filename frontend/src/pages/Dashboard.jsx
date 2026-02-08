@@ -168,9 +168,29 @@ export default function Dashboard({ session }) {
             localStorage.removeItem(mockKey)
         }
 
-        const { error } = await supabase.from('event_signups').delete().eq('event_id', nextEvent.id).eq('user_id', session.user.id)
-        if (error) alert(error.message)
-        refresh()
+        try {
+            const response = await fetch('/api/remove-signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({
+                    event_id: nextEvent.id,
+                    user_id: session.user.id
+                })
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.detail || "Failed to remove")
+            }
+
+            refresh()
+        } catch (error) {
+            console.error(error)
+            alert(error.message)
+        }
     }
 
     // -- RENDER --
