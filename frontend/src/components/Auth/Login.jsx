@@ -42,8 +42,7 @@ export default function Login() {
 
     return (
         <div className="login-card">
-            <h1>Welcome Back</h1>
-            <p>Sign in to manage your event roster</p>
+            <h1>Beth Am Basketball</h1>
 
             <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <input
@@ -67,6 +66,9 @@ export default function Login() {
                 <button className="primary-btn" type="submit" disabled={loading}>
                     {loading ? 'Signing In...' : 'Sign In'}
                 </button>
+                <div style={{ textAlign: 'center' }}>
+                    <Link to="/forgot-password" style={{ color: 'var(--primary)', fontSize: '0.9rem' }}>Forgot Password?</Link>
+                </div>
             </form>
 
             <div className="divider">or</div>
@@ -93,10 +95,10 @@ export default function Login() {
                 </button>
             )}
 
-            <div className="auth-links">
-                <p>New here? <Link to="/request-access" style={{ fontWeight: 'bold' }}>Request Access</Link></p>
-                <p>Has your request been approved? <Link to="/signup">Sign Up</Link></p>
-                <p><Link to="/forgot-password">Forgot Password?</Link></p>
+            <div className="registration-section">
+                <h4>New Here? Join The Game</h4>
+                <p>1. <Link to="/request-access">Request Access</Link> to get started.</p>
+                <p>2. Once approved, <Link to="/signup">Create Your Account</Link>.</p>
             </div>
 
             {message && <p style={{ marginTop: '1rem', color: 'red' }}>{message}</p>}

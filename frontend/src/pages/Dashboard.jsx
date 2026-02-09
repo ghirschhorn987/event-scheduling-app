@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Link, useParams } from 'react-router-dom'
+import { safeDate, subtractMinutes } from '../utils/dateUtils'
 
 export default function Dashboard({ session }) {
     const { id } = useParams() // Get ID from URL if present
@@ -64,7 +65,7 @@ export default function Dashboard({ session }) {
                     const eventDate = new Date(event.event_date) // This is potentially UTC
 
                     // Calc times (minutes subtraction)
-                    const subtractMinutes = (date, min) => new Date(date.getTime() - min * 60000)
+
 
                     event.roster_sign_up_open = subtractMinutes(eventDate, event.event_types.roster_sign_up_open_minutes).toISOString()
                     event.reserve_sign_up_open = subtractMinutes(eventDate, event.event_types.reserve_sign_up_open_minutes).toISOString()
@@ -138,11 +139,7 @@ export default function Dashboard({ session }) {
     // Membership check
     const isMember = userProfile?.user_group_id != null
 
-    const safeDate = (d) => {
-        if (!d) return 'TBD'
-        const date = new Date(d)
-        return isNaN(date.getTime()) ? 'Invalid Date' : date.toLocaleString()
-    }
+
 
     // Render Conditions
     const isRosterOpen = rosterOpenTime && now >= rosterOpenTime

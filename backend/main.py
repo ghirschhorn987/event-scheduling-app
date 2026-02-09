@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from db import supabase
 from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate
+from logic import enrich_event, process_holding_queue, calculate_promotions
 
 app = FastAPI()
 
@@ -92,45 +93,7 @@ def get_now():
 
 
 
-def enrich_event(event_data):
-    """
-    Takes raw event data (joined with event_classes) and computes the detailed timestamps
-    and fields expected by the frontend 'Event' model.
-    """
-    event_class = event_data.get("event_classes")
-    if not event_class:
-        # Should not happen if FK is enforced
-        return event_data
-
-    event_date = datetime.fromisoformat(event_data["event_date"].replace('Z', '+00:00'))
-    
-    # Enrich fields
-    event_data["name"] = event_class["name"]
-    event_data["max_signups"] = event_class["max_signups"]
-    
-    # Calculate timestamps
-    # Timedeltas in minutes
-    event_data["roster_sign_up_open"] = event_date - timedelta(minutes=event_class["roster_sign_up_open_minutes"])
-    event_data["reserve_sign_up_open"] = event_date - timedelta(minutes=event_class["reserve_sign_up_open_minutes"])
-    
-    # These seem to be "Scheduling" windows (when admins do things?) or automatic moves?
-    # The prompt called them "initial_reserve_scheduling" and "final_reserve_scheduling"
-    event_data["initial_reserve_scheduling"] = event_date - timedelta(minutes=event_class["initial_reserve_scheduling_minutes"])
-    event_data["final_reserve_scheduling"] = event_date - timedelta(minutes=event_class["final_reserve_scheduling_minutes"])
-    
-    # Waitlist open? The prompt removed `waitlist_sign_up_open` from Events table.
-    # It said: "The Events table would no longer have fields for max_signups, roster_sign_up_open, ..., waitlist_sign_up_open..."
-    # Does EventClass have it?
-    # User prompt: "Four fields representing times before event stat as minutes: roster_sign_up_open, reserve_sign_up_open, initial_reserve_scheduling, final_reserve_scheduling."
-    # IT MISSED `waitlist_sign_up_open` in the list of 4 fields.
-    # But it EXPLICITLY said "Events table would no longer have... waitlist_sign_up_open".
-    # So where does it come from? 
-    # Maybe Roster Open == Waitlist Open? Or it's always open?
-    # I'll assumme for now it matches Roster Open or I'll add it to Class if needed.
-    # Let's use Roster Open time for Waitlist Open for now to avoid errors.
-    event_data["waitlist_sign_up_open"] = event_data["roster_sign_up_open"]
-
-    return event_data
+# enrich_event moved to logic.py
 
 def fetch_event(event_id: str):
     # Join with event_types
@@ -518,21 +481,10 @@ async def trigger_schedule():
         if not holding_users:
             continue
             
-        # 2. Sort Logic
-        # Window 1 (seq -1) -> Random Shuffle
-        # Window 2 (seq > 0) -> Sorted by seq
-        window1 = [u for u in holding_users if not u.get('sequence_number') or u.get('sequence_number') < 0]
-        window2 = [u for u in holding_users if u.get('sequence_number') and u.get('sequence_number') > 0]
+        # 2. Sort Logic (Moved to logic.py)
+        queue = process_holding_queue(holding_users)
         
-        # Shuffle Window 1
-        random.shuffle(window1)
-        
-        # Sort Window 2
-        window2.sort(key=lambda x: x['sequence_number'])
-        
-        queue = window1 + window2
-        
-        # 3. Promote
+        # 3. Promote (Logic moved to logic.py, DB fetch stays here)
         # We need current roster count *right now*
         roster_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", event_id).eq("list_type", "EVENT").execute()
         current_roster_count = roster_res.count or 0
@@ -540,25 +492,15 @@ async def trigger_schedule():
         waitlist_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", event_id).eq("list_type", "WAITLIST").execute()
         current_waitlist_count = waitlist_res.count or 0
         
-        for user in queue:
-            signup_id = user['id']
-            new_list = "EVENT"
-            new_seq = 0
-            
-            if current_roster_count < max_signups:
-                new_list = "EVENT"
-                current_roster_count += 1
-                new_seq = current_roster_count
-            else:
-                new_list = "WAITLIST"
-                current_waitlist_count += 1
-                new_seq = current_waitlist_count
-                
-            # Update DB
+        # Calculate new statuses
+        updates = calculate_promotions(queue, current_roster_count, max_signups, current_waitlist_count)
+        
+        # Execute Batch Updates
+        for update in updates:
             supabase.table("event_signups").update({
-                "list_type": new_list,
-                "sequence_number": new_seq
-            }).eq("id", signup_id).execute()
+                "list_type": update["list_type"],
+                "sequence_number": update["sequence_number"]
+            }).eq("id", update["id"]).execute()
             
             processed_count += 1
 
