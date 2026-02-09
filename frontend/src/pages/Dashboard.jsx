@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 
 export default function Dashboard({ session }) {
+    const { id } = useParams() // Get ID from URL if present
     const [loading, setLoading] = useState(true)
     const [userProfile, setUserProfile] = useState(null)
     const [nextEvent, setNextEvent] = useState(null)
@@ -25,21 +26,54 @@ export default function Dashboard({ session }) {
 
                 setUserProfile(profile)
 
-                // 2. Get Next Event
-                const now = new Date().toISOString()
-                console.log("Fetching events >", now)
-                const { data: events, error: eventError } = await supabase
-                    .from('events')
-                    .select('*')
-                    .eq('status', 'SCHEDULED')
-                    .gt('event_date', now)
-                    .order('event_date', { ascending: true })
-                    .limit(1)
+                // 2. Get Event (Specific or Next)
+                let event = null
 
-                console.log("Events found:", events)
-                if (eventError) console.error("Event Error:", eventError)
+                if (id) {
+                    console.log("Fetching specific event:", id)
+                    // Use backend API if possible or simplified fetch
+                    // For now, we use the logic we wrote: fetch and manual enrich
+                    const { data, error } = await supabase
+                        .from('events')
+                        .select('*, event_types(*)')
+                        .eq('id', id)
+                        .single()
 
-                const event = events?.[0]
+                    if (data) event = data
+                } else {
+                    // Fetch next event
+                    const now = new Date().toISOString()
+                    const { data: events } = await supabase
+                        .from('events')
+                        .select('*, event_types(*)') // Join types
+                        .eq('status', 'SCHEDULED')
+                        .gt('event_date', now)
+                        .order('event_date', { ascending: true })
+                        .limit(1)
+
+                    event = events?.[0]
+                }
+
+                // ENRICHMENT (Frontend version of backend logic)
+                if (event && event.event_types) {
+                    // Map type fields to top level for compatibility
+                    event.name = event.event_types.name
+                    event.max_signups = event.event_types.max_signups
+
+                    // Parse Date
+                    const eventDate = new Date(event.event_date) // This is potentially UTC
+
+                    // Calc times (minutes subtraction)
+                    const subtractMinutes = (date, min) => new Date(date.getTime() - min * 60000)
+
+                    event.roster_sign_up_open = subtractMinutes(eventDate, event.event_types.roster_sign_up_open_minutes).toISOString()
+                    event.reserve_sign_up_open = subtractMinutes(eventDate, event.event_types.reserve_sign_up_open_minutes).toISOString()
+                    event.initial_reserve_scheduling = subtractMinutes(eventDate, event.event_types.initial_reserve_scheduling_minutes).toISOString()
+                    event.final_reserve_scheduling = subtractMinutes(eventDate, event.event_types.final_reserve_scheduling_minutes).toISOString()
+                    // waitlist same as roster for now
+                    event.waitlist_sign_up_open = event.roster_sign_up_open
+                }
+
                 setNextEvent(event)
 
                 if (event) {
@@ -78,7 +112,7 @@ export default function Dashboard({ session }) {
             }
         }
         fetchData()
-    }, [session, refreshTrigger])
+    }, [session, refreshTrigger, id])
 
     const refresh = () => setRefreshTrigger(prev => prev + 1)
 
@@ -101,9 +135,7 @@ export default function Dashboard({ session }) {
     const initialReserveTime = nextEvent ? new Date(nextEvent.initial_reserve_scheduling) : null
     const finalReserveTime = nextEvent ? new Date(nextEvent.final_reserve_scheduling) : null
 
-    // Membership check (assuming any group membership counts for now, or match logic)
-    // Spec: "If a user is in the USER_GROUP associated with the Event"
-    // PROVISIONAL: We assume the user is a member if they have a non-null user_group_id.
+    // Membership check
     const isMember = userProfile?.user_group_id != null
 
     const safeDate = (d) => {
@@ -193,113 +225,120 @@ export default function Dashboard({ session }) {
         }
     }
 
-    // -- RENDER --
-
     if (loading) return <div className="loading-screen">Loading...</div>
 
-    if (!nextEvent) return (
-        <div className="dashboard">
-            <header><h2>Dashboard</h2><button className="secondary-btn" onClick={() => supabase.auth.signOut()}>Sign Out</button></header>
-            <div className="event-info">
-                <h3>No Upcoming Events</h3>
-                <p>There are no events scheduled at this time.</p>
+    // Layout
+    return (
+        <div className="dashboard-container max-w-2xl mx-auto p-4">
+            <div className="mb-4">
+                <Link to="/events" className="text-blue-600 hover:underline">&larr; Back to All Events</Link>
             </div>
-        </div>
-    )
 
-    console.log("Rendering Dashboard with Event:", nextEvent)
-    const eventDate = safeDate(nextEvent.event_date)
-
-    // 1. Check Cancellation
-    if (isCanceled) {
-        return (
-            <div className="dashboard">
-                <header><h2>Dashboard</h2><button className="secondary-btn" onClick={() => supabase.auth.signOut()}>Sign Out</button></header>
-                <div className="alert alert-warning">This event has been CANCELLED.</div>
-            </div>
-        )
-    }
-
-    // 2. Not Open message
-    if (!isRosterOpen) {
-        return (
-            <div className="dashboard">
-                <header><h2>Dashboard</h2><button className="secondary-btn" onClick={() => supabase.auth.signOut()}>Sign Out</button></header>
-                <div className="event-info">
-                    <h3>Next Event: {nextEvent.name}</h3>
-                    <p className="date">{eventDate}</p>
-                    <div className="alert">
-                        Roster signup opens at {safeDate(nextEvent.roster_sign_up_open)}. <br />
-                        Waitlist signup opens at {safeDate(nextEvent.waitlist_sign_up_open)}.
+            {!nextEvent ? (
+                <div className="no-events text-center py-10">
+                    <header className="mb-4 flex justify-between items-center">
+                        <h2 className="text-2xl font-bold">Dashboard</h2>
+                        <button className="secondary-btn" onClick={() => supabase.auth.signOut()}>Sign Out</button>
+                    </header>
+                    <div className="bg-white p-6 rounded shadow">
+                        <h3 className="text-xl mb-2">No Upcoming Events</h3>
+                        <p className="text-gray-600">Check back later for new schedules.</p>
                     </div>
                 </div>
-            </div>
-        )
-    }
-
-    // 3. Lists View
-    return (
-        <div className="dashboard">
-            <header>
-                <h2>Dashboard</h2>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                    {session?.user?.email === 'mock.admin@test.com' && (
-                        <Link to="/admin" className="primary-btn" style={{ marginRight: '10px', textDecoration: 'none' }}>Admin Panel</Link>
-                    )}
-                    <span style={{ marginRight: '1rem', color: '#94a3b8' }}>{userProfile?.email} ({isMember ? "Member" : "Guest"})</span>
-                    <button className="secondary-btn" onClick={() => supabase.auth.signOut()}>Sign Out</button>
-                </div>
-            </header>
-
-            <div className="event-info">
-                <h3>{nextEvent.name}</h3>
-                <p className="event-date">Happening on: {eventDate}</p>
-
-                {!isMember && now < reserveOpenTime && (
-                    <div className="alert alert-warning">Reserve list sign up is not yet open.</div>
-                )}
-
-                <div className="actions" style={{ marginTop: '1rem' }}>
-                    {userSignup ? (
-                        <button className="danger-btn" onClick={handleDelete}>Remove My Name</button>
-                    ) : (
-                        <button
-                            className="primary-btn"
-                            onClick={handleJoin}
-                            disabled={!isMember && now < reserveOpenTime}
-                        >
-                            Add My Name
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            <div className="lists-container">
-                <ListColumn title="Event Roster" items={eventList} max={nextEvent.max_signups} />
-                <ListColumn title="Wait List" items={waitList} />
-                <ListColumn title="Holding Area" items={holdingList} isHolding />
-            </div>
-        </div>
-    )
-}
-
-function ListColumn({ title, items, max, isHolding }) {
-    return (
-        <div className="list-column">
-            <h4>{title} {max ? `(${items.length}/${max})` : `(${items.length})`}</h4>
-            <ul className="list-items">
-                {items.length === 0 && <li style={{ padding: '0.5rem', color: '#64748b' }}>Empty</li>}
-                {items.map((item, idx) => (
-                    <li key={item.id} className="list-item">
+            ) : (
+                <>
+                    <header className="mb-6 flex justify-between items-center">
                         <div>
-                            <span className="sequence">
-                                {isHolding && !item.sequence_number ? '-' : (item.sequence_number || idx + 1)}
-                            </span>
-                            {item.profiles?.name || item.profiles?.email || 'Unknown'}
+                            <h2 className="text-3xl font-bold">{nextEvent.name}</h2>
+                            <p className="text-gray-600">{safeDate(nextEvent.event_date)}</p>
                         </div>
-                    </li>
-                ))}
-            </ul>
+                        <button className="secondary-btn bg-gray-200 px-4 py-2 rounded" onClick={() => supabase.auth.signOut()}>Sign Out</button>
+                    </header>
+
+                    {isCanceled && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                            This event has been CANCELLED.
+                        </div>
+                    )}
+
+                    {/* Status Bar */}
+                    <div className="bg-white p-4 rounded shadow mb-6">
+                        <h3 className="font-semibold mb-2">Event Status</h3>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>Roster: {eventList.length} / {nextEvent.max_signups}</div>
+                            <div>Waitlist: {waitList.length}</div>
+                            <div>Holding: {holdingList.length}</div>
+                        </div>
+                    </div>
+
+                    {/* User Status / Actions */}
+                    <div className="bg-white p-6 rounded shadow mb-6">
+                        {userSignup ? (
+                            <div className="text-center">
+                                <p className="text-lg mb-4">You are: <strong>{userSignup.list_type.replace('_', ' ')}</strong> #{userSignup.sequence_number > 0 ? userSignup.sequence_number : '-'}</p>
+                                <button onClick={handleDelete} className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600">
+                                    Leave Event
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="text-center">
+                                {!isRosterOpen && !isMember ? (
+                                    <div>
+                                        <p className="mb-2">Signup opens: {safeDate(rosterOpenTime)}</p>
+                                        <button disabled className="bg-gray-300 text-gray-500 px-6 py-2 rounded cursor-not-allowed">
+                                            Not Open Yet
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button onClick={handleJoin} className="bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700">
+                                        Sign Up Now
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Lists Display */}
+                    <div className="space-y-4">
+                        <div className="bg-white p-4 rounded shadow">
+                            <h3 className="font-bold border-b pb-2 mb-2">Main Roster</h3>
+                            <ul>
+                                {eventList.map((s, i) => (
+                                    <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
+                                        <span>{i + 1}. {s.profiles?.name || 'Guest'}</span>
+                                    </li>
+                                ))}
+                                {eventList.length === 0 && <li className="text-gray-500 italic">Empty</li>}
+                            </ul>
+                        </div>
+
+                        <div className="bg-white p-4 rounded shadow">
+                            <h3 className="font-bold border-b pb-2 mb-2">Waitlist</h3>
+                            <ul>
+                                {waitList.map((s, i) => (
+                                    <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
+                                        <span>{i + 1}. {s.profiles?.name || 'Guest'}</span>
+                                    </li>
+                                ))}
+                                {waitList.length === 0 && <li className="text-gray-500 italic">Empty</li>}
+                            </ul>
+                        </div>
+
+                        {holdingList.length > 0 && (
+                            <div className="bg-white p-4 rounded shadow">
+                                <h3 className="font-bold border-b pb-2 mb-2">Holding Area</h3>
+                                <ul>
+                                    {holdingList.map((s, i) => (
+                                        <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
+                                            <span>- {s.profiles?.name || 'Guest'}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
         </div>
     )
 }

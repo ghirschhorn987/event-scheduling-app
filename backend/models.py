@@ -11,18 +11,33 @@ class ScheduleResponse(BaseModel):
     message: str
     updated_count: int
 
-class Event(BaseModel):
+class EventType(BaseModel):
     id: str
     name: str
-    status: str
+    day_of_week: int
+    time_of_day: str  # Time object or string? Pydantic handles str usually
+    time_zone: str
     max_signups: int
+    roster_sign_up_open_minutes: int
+    reserve_sign_up_open_minutes: int
+    initial_reserve_scheduling_minutes: int
+    final_reserve_scheduling_minutes: int
+
+class Event(BaseModel):
+    id: str
+    event_type_id: str
     event_date: datetime
-    roster_sign_up_open: datetime
-    waitlist_sign_up_open: datetime
-    reserve_sign_up_open: datetime
-    initial_reserve_scheduling: datetime
-    initial_reserve_scheduling: datetime
-    final_reserve_scheduling: datetime
+    status: str
+    # Enriched fields (joined from EventType for API response)
+    name: Optional[str] = None
+    max_signups: Optional[int] = None
+    # Calculated timestamps based on event_date - minutes
+    roster_sign_up_open: Optional[datetime] = None
+    reserve_sign_up_open: Optional[datetime] = None
+    initial_reserve_scheduling: Optional[datetime] = None
+    final_reserve_scheduling: Optional[datetime] = None
+    # Counts
+    counts: Optional[dict] = None # { "roster": int, "waitlist": int, "holding": int }
 
 class RegistrationRequest(BaseModel):
     full_name: str

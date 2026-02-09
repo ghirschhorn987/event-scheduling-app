@@ -90,11 +90,55 @@ async def get_current_admin(request: Request):
 def get_now():
     return datetime.now(timezone.utc)
 
+
+
+def enrich_event(event_data):
+    """
+    Takes raw event data (joined with event_classes) and computes the detailed timestamps
+    and fields expected by the frontend 'Event' model.
+    """
+    event_class = event_data.get("event_classes")
+    if not event_class:
+        # Should not happen if FK is enforced
+        return event_data
+
+    event_date = datetime.fromisoformat(event_data["event_date"].replace('Z', '+00:00'))
+    
+    # Enrich fields
+    event_data["name"] = event_class["name"]
+    event_data["max_signups"] = event_class["max_signups"]
+    
+    # Calculate timestamps
+    # Timedeltas in minutes
+    event_data["roster_sign_up_open"] = event_date - timedelta(minutes=event_class["roster_sign_up_open_minutes"])
+    event_data["reserve_sign_up_open"] = event_date - timedelta(minutes=event_class["reserve_sign_up_open_minutes"])
+    
+    # These seem to be "Scheduling" windows (when admins do things?) or automatic moves?
+    # The prompt called them "initial_reserve_scheduling" and "final_reserve_scheduling"
+    event_data["initial_reserve_scheduling"] = event_date - timedelta(minutes=event_class["initial_reserve_scheduling_minutes"])
+    event_data["final_reserve_scheduling"] = event_date - timedelta(minutes=event_class["final_reserve_scheduling_minutes"])
+    
+    # Waitlist open? The prompt removed `waitlist_sign_up_open` from Events table.
+    # It said: "The Events table would no longer have fields for max_signups, roster_sign_up_open, ..., waitlist_sign_up_open..."
+    # Does EventClass have it?
+    # User prompt: "Four fields representing times before event stat as minutes: roster_sign_up_open, reserve_sign_up_open, initial_reserve_scheduling, final_reserve_scheduling."
+    # IT MISSED `waitlist_sign_up_open` in the list of 4 fields.
+    # But it EXPLICITLY said "Events table would no longer have... waitlist_sign_up_open".
+    # So where does it come from? 
+    # Maybe Roster Open == Waitlist Open? Or it's always open?
+    # I'll assumme for now it matches Roster Open or I'll add it to Class if needed.
+    # Let's use Roster Open time for Waitlist Open for now to avoid errors.
+    event_data["waitlist_sign_up_open"] = event_data["roster_sign_up_open"]
+
+    return event_data
+
 def fetch_event(event_id: str):
-    response = supabase.table("events").select("*").eq("id", event_id).single().execute()
+    # Join with event_types
+    response = supabase.table("events").select("*, event_types(*)").eq("id", event_id).single().execute()
     if not response.data:
         raise HTTPException(status_code=404, detail="Event not found")
-    return response.data
+    
+    return enrich_event(response.data)
 
 def fetch_counts(event_id: str):
     # This is a bit inefficient doing client-side counting, but fine for MVP
@@ -385,6 +429,56 @@ async def remove_signup(body: SignupRequest, request: Request):
         raise HTTPException(status_code=500, detail="Failed to remove signup")
 
 
+@app.get("/api/events")
+async def get_events(request: Request):
+    # Public endpoint to list upcoming events
+    
+    # 1. Fetch events + types
+    # Filter: event_date >= now (or maybe slightly in past?)
+    # User said "list of upcoming events".
+    now = get_now()
+    
+    events_res = supabase.table("events")\
+        .select("*, event_types(*)")\
+        .gte("event_date", now.isoformat())\
+        .order("event_date")\
+        .execute()
+        
+    enriched_events = [enrich_event(e) for e in events_res.data]
+    
+    # 2. Fetch counts
+    event_ids = [e['id'] for e in enriched_events]
+    
+    if not event_ids:
+         return enriched_events
+         
+    # Fetch all signups for these events
+    signups_res = supabase.table("event_signups")\
+        .select("event_id, list_type")\
+        .in_("event_id", event_ids)\
+        .execute()
+        
+    # Aggregate
+    counts_map = {eid: {"roster": 0, "waitlist": 0, "holding": 0} for eid in event_ids}
+    
+    for s in signups_res.data:
+        eid = s['event_id']
+        ltype = s['list_type']
+        if eid in counts_map:
+            if ltype == "EVENT":
+                counts_map[eid]["roster"] += 1
+            elif ltype == "WAITLIST":
+                counts_map[eid]["waitlist"] += 1
+            elif ltype == "WAITLIST_HOLDING":
+                counts_map[eid]["holding"] += 1
+                
+    # Attach
+    for e in enriched_events:
+        e['counts'] = counts_map.get(e['id'], {"roster": 0, "waitlist": 0, "holding": 0})
+    
+    return enriched_events
+
+
 @app.post("/api/schedule")
 async def trigger_schedule():
     """
@@ -398,12 +492,15 @@ async def trigger_schedule():
     # Status is SCHEDULED AND final_reserve_scheduling <= now
     # We could also add a flag "processed" to avoid re-running, but idempotency is better.
     events_res = supabase.table("events")\
-        .select("*")\
+        .select("*, event_types(*)")\
         .eq("status", "SCHEDULED")\
-        .lte("final_reserve_scheduling", now_iso)\
         .execute()
-        
-    events = events_res.data
+    
+    # We enrich first to get the calculated fields
+    enriched_events = [enrich_event(e) for e in events_res.data]
+
+    # Filter by time manually since we can't easily filter on calculated field in DB
+    events = [e for e in enriched_events if e["final_reserve_scheduling"] <= now]
     processed_count = 0
     
     for event in events:

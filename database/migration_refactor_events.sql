@@ -1,27 +1,12 @@
--- Enum types
-CREATE TYPE event_status AS ENUM ('SCHEDULED', 'CANCELLED');
-CREATE TYPE list_type AS ENUM ('EVENT', 'WAITLIST', 'WAITLIST_HOLDING');
+-- Migration: Split Events into Classes and Instances
 
--- User Groups
-CREATE TABLE user_groups (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL UNIQUE
-);
+DROP TABLE IF EXISTS event_signups;
+DROP TABLE IF EXISTS events;
+DROP TABLE IF EXISTS event_types CASCADE;
+DROP TABLE IF EXISTS event_templates CASCADE;
+DROP TABLE IF EXISTS event_classes CASCADE; -- Cleanup old if exists
 
--- Profiles (Public user data linked to auth.users)
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  name TEXT,
-  email TEXT,
-  user_group_id UUID REFERENCES user_groups(id)
-);
-
--- Turn on Row Level Security
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_groups ENABLE ROW LEVEL SECURITY;
-
--- Events
--- Event Types (Definitions for recurring events)
+-- Re-create tables
 CREATE TABLE event_types (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -36,8 +21,9 @@ CREATE TABLE event_types (
 );
 
 ALTER TABLE event_types ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Event Types are viewable by everyone" ON event_types FOR SELECT USING (true);
 
--- Events (Instances)
+
 CREATE TABLE events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   event_type_id UUID REFERENCES event_types(id) ON DELETE CASCADE,
@@ -46,8 +32,9 @@ CREATE TABLE events (
 );
 
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Events are viewable by everyone" ON events FOR SELECT USING (true);
 
--- Event Signups (The lists)
+-- Re-create Signups
 CREATE TABLE event_signups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id UUID REFERENCES events(id) ON DELETE CASCADE NOT NULL,
@@ -59,15 +46,6 @@ CREATE TABLE event_signups (
 );
 
 ALTER TABLE event_signups ENABLE ROW LEVEL SECURITY;
-
--- Policies (Simple open policies for now, refine later)
-CREATE POLICY "Public profiles are viewable by everyone" ON profiles FOR SELECT USING (true);
-CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
-
-CREATE POLICY "User groups are viewable by everyone" ON user_groups FOR SELECT USING (true);
-
-CREATE POLICY "Events are viewable by everyone" ON events FOR SELECT USING (true);
-
 CREATE POLICY "Signups are viewable by everyone" ON event_signups FOR SELECT USING (true);
 CREATE POLICY "Users can insert their own signup" ON event_signups FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can delete their own signup" ON event_signups FOR DELETE USING (auth.uid() = user_id);
