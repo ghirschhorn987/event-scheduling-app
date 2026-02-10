@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Link, useParams } from 'react-router-dom'
 import { safeDate, subtractMinutes } from '../utils/dateUtils'
+import Header from '../components/Header'
 
 export default function Dashboard({ session }) {
     const { id } = useParams() // Get ID from URL if present
@@ -226,116 +227,117 @@ export default function Dashboard({ session }) {
 
     // Layout
     return (
-        <div className="dashboard-container max-w-2xl mx-auto p-4">
-            <div className="mb-4">
-                <Link to="/events" className="text-blue-600 hover:underline">&larr; Back to All Events</Link>
-            </div>
+        <>
+            <Header session={session} />
+            <div className="dashboard-container max-w-2xl mx-auto p-4">
+                {/* Back link removed as it is in Header */}
 
-            {!nextEvent ? (
-                <div className="no-events text-center py-10">
-                    <header className="mb-4 flex justify-between items-center">
-                        <h2 className="text-2xl font-bold">Dashboard</h2>
-                        <button className="secondary-btn" onClick={() => supabase.auth.signOut()}>Sign Out</button>
-                    </header>
-                    <div className="bg-white p-6 rounded shadow">
-                        <h3 className="text-xl mb-2">No Upcoming Events</h3>
-                        <p className="text-gray-600">Check back later for new schedules.</p>
-                    </div>
-                </div>
-            ) : (
-                <>
-                    <header className="mb-6 flex justify-between items-center">
-                        <div>
-                            <h2 className="text-3xl font-bold">{nextEvent.name}</h2>
-                            <p className="text-gray-600">{safeDate(nextEvent.event_date)}</p>
-                        </div>
-                        <button className="secondary-btn bg-gray-200 px-4 py-2 rounded" onClick={() => supabase.auth.signOut()}>Sign Out</button>
-                    </header>
-
-                    {isCanceled && (
-                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-                            This event has been CANCELLED.
-                        </div>
-                    )}
-
-                    {/* Status Bar */}
-                    <div className="bg-white p-4 rounded shadow mb-6">
-                        <h3 className="font-semibold mb-2">Event Status</h3>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>Roster: {eventList.length} / {nextEvent.max_signups}</div>
-                            <div>Waitlist: {waitList.length}</div>
-                            <div>Holding: {holdingList.length}</div>
+                {!nextEvent ? (
+                    <div className="no-events text-center py-10">
+                        <header className="mb-4 flex justify-between items-center">
+                            <h2 className="text-2xl font-bold">Dashboard</h2>
+                            <button className="secondary-btn" onClick={() => supabase.auth.signOut()}>Sign Out</button>
+                        </header>
+                        <div className="bg-white p-6 rounded shadow">
+                            <h3 className="text-xl mb-2">No Upcoming Events</h3>
+                            <p className="text-gray-600">Check back later for new schedules.</p>
                         </div>
                     </div>
-
-                    {/* User Status / Actions */}
-                    <div className="bg-white p-6 rounded shadow mb-6">
-                        {userSignup ? (
-                            <div className="text-center">
-                                <p className="text-lg mb-4">You are: <strong>{userSignup.list_type.replace('_', ' ')}</strong> #{userSignup.sequence_number > 0 ? userSignup.sequence_number : '-'}</p>
-                                <button onClick={handleDelete} className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600">
-                                    Leave Event
-                                </button>
+                ) : (
+                    <>
+                        <header className="mb-6 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-3xl font-bold">{nextEvent.name}</h2>
+                                <p className="text-gray-600">{safeDate(nextEvent.event_date)}</p>
                             </div>
-                        ) : (
-                            <div className="text-center">
-                                {!isRosterOpen && !isMember ? (
-                                    <div>
-                                        <p className="mb-2">Signup opens: {safeDate(rosterOpenTime)}</p>
-                                        <button disabled className="bg-gray-300 text-gray-500 px-6 py-2 rounded cursor-not-allowed">
-                                            Not Open Yet
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <button onClick={handleJoin} className="bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700">
-                                        Sign Up Now
-                                    </button>
-                                )}
+                            <button className="secondary-btn bg-gray-200 px-4 py-2 rounded" onClick={() => supabase.auth.signOut()}>Sign Out</button>
+                        </header>
+
+                        {isCanceled && (
+                            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                                This event has been CANCELLED.
                             </div>
                         )}
-                    </div>
 
-                    {/* Lists Display */}
-                    <div className="space-y-4">
-                        <div className="bg-white p-4 rounded shadow">
-                            <h3 className="font-bold border-b pb-2 mb-2">Main Roster</h3>
-                            <ul>
-                                {eventList.map((s, i) => (
-                                    <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
-                                        <span>{i + 1}. {s.profiles?.name || 'Guest'}</span>
-                                    </li>
-                                ))}
-                                {eventList.length === 0 && <li className="text-gray-500 italic">Empty</li>}
-                            </ul>
+                        {/* Status Bar */}
+                        <div className="bg-white p-4 rounded shadow mb-6">
+                            <h3 className="font-semibold mb-2">Event Status</h3>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>Roster: {eventList.length} / {nextEvent.max_signups}</div>
+                                <div>Waitlist: {waitList.length}</div>
+                                <div>Holding: {holdingList.length}</div>
+                            </div>
                         </div>
 
-                        <div className="bg-white p-4 rounded shadow">
-                            <h3 className="font-bold border-b pb-2 mb-2">Waitlist</h3>
-                            <ul>
-                                {waitList.map((s, i) => (
-                                    <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
-                                        <span>{i + 1}. {s.profiles?.name || 'Guest'}</span>
-                                    </li>
-                                ))}
-                                {waitList.length === 0 && <li className="text-gray-500 italic">Empty</li>}
-                            </ul>
+                        {/* User Status / Actions */}
+                        <div className="bg-white p-6 rounded shadow mb-6">
+                            {userSignup ? (
+                                <div className="text-center">
+                                    <p className="text-lg mb-4">You are: <strong>{userSignup.list_type.replace('_', ' ')}</strong> #{userSignup.sequence_number > 0 ? userSignup.sequence_number : '-'}</p>
+                                    <button onClick={handleDelete} className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600">
+                                        Leave Event
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="text-center">
+                                    {!isRosterOpen && !isMember ? (
+                                        <div>
+                                            <p className="mb-2">Signup opens: {safeDate(rosterOpenTime)}</p>
+                                            <button disabled className="bg-gray-300 text-gray-500 px-6 py-2 rounded cursor-not-allowed">
+                                                Not Open Yet
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button onClick={handleJoin} className="bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700">
+                                            Sign Up Now
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
-                        {holdingList.length > 0 && (
+                        {/* Lists Display */}
+                        <div className="space-y-4">
                             <div className="bg-white p-4 rounded shadow">
-                                <h3 className="font-bold border-b pb-2 mb-2">Holding Area</h3>
+                                <h3 className="font-bold border-b pb-2 mb-2">Main Roster</h3>
                                 <ul>
-                                    {holdingList.map((s, i) => (
+                                    {eventList.map((s, i) => (
                                         <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
-                                            <span>- {s.profiles?.name || 'Guest'}</span>
+                                            <span>{i + 1}. {s.profiles?.name || 'Guest'}</span>
                                         </li>
                                     ))}
+                                    {eventList.length === 0 && <li className="text-gray-500 italic">Empty</li>}
                                 </ul>
                             </div>
-                        )}
-                    </div>
-                </>
-            )}
-        </div>
+
+                            <div className="bg-white p-4 rounded shadow">
+                                <h3 className="font-bold border-b pb-2 mb-2">Waitlist</h3>
+                                <ul>
+                                    {waitList.map((s, i) => (
+                                        <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
+                                            <span>{i + 1}. {s.profiles?.name || 'Guest'}</span>
+                                        </li>
+                                    ))}
+                                    {waitList.length === 0 && <li className="text-gray-500 italic">Empty</li>}
+                                </ul>
+                            </div>
+
+                            {holdingList.length > 0 && (
+                                <div className="bg-white p-4 rounded shadow">
+                                    <h3 className="font-bold border-b pb-2 mb-2">Holding Area</h3>
+                                    <ul>
+                                        {holdingList.map((s, i) => (
+                                            <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
+                                                <span>- {s.profiles?.name || 'Guest'}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
+            </div>
+        </>
     )
 }

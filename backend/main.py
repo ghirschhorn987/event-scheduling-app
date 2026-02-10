@@ -326,42 +326,18 @@ async def signup(body: SignupRequest, request: Request):
         
         if current_roster_count < max_signups:
             target_list = "EVENT"
-            # Sequence: simple append logic handled by DB ID or explicit if needed.
-            # Frontend used 'eventList.length + 1'. We will follow that or leave null.
-            # Let's count explicitly for sequence
-            target_list_count = fetch_counts(body.event_id) # Re-fetch?? optimize later
+            target_list_count = fetch_counts(body.event_id)
             sequence = target_list_count + 1
         else:
             target_list = "WAITLIST"
-            # count waitlist
             wl_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST").execute()
             sequence = wl_res.count + 1
 
     else:
-        # Guest Logic
-        if now < reserve_open:
-            raise HTTPException(status_code=400, detail="Reserve signup not yet open")
-        
-        elif now < initial_reserve:
-            # Window 1: Holding (Blind)
-            target_list = "WAITLIST_HOLDING"
-            sequence = -1 # Representing null/dash
-            
-        elif now < final_reserve:
-            # Window 2: Holding (Sequenced)
-            target_list = "WAITLIST_HOLDING"
-            max_seq = get_max_holding_sequence(body.event_id)
-            sequence = max_seq + 1
-            
-        else:
-            # After Final: Normal access
-            if current_roster_count < max_signups:
-                target_list = "EVENT"
-                sequence = current_roster_count + 1
-            else:
-                target_list = "WAITLIST"
-                wl_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST").execute()
-                sequence = wl_res.count + 1
+        # Non-Member / Guest Logic - RESTRICTED
+        # User requested no Guest access. 
+        # If they are not in a group, they cannot sign up.
+        raise HTTPException(status_code=403, detail="Only approved members can sign up for events.")
 
     # 3. Execute Insert
     payload = {
@@ -403,7 +379,8 @@ async def remove_signup(body: SignupRequest, request: Request):
 
 @app.get("/api/events")
 async def get_events(request: Request):
-    # Public endpoint to list upcoming events
+    # Authenticated endpoint to list upcoming events
+    await get_current_user(request)
     
     # 1. Fetch events + types
     # Filter: event_date >= now (or maybe slightly in past?)

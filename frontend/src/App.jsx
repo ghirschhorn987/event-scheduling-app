@@ -91,7 +91,7 @@ function App() {
                         <Route path="/forgot-password" element={!session ? <PasswordReset /> : <Navigate to="/dashboard" />} />
                         <Route path="/dashboard" element={session ? <Dashboard session={session} /> : <Navigate to="/login" />} />
                         <Route path="/event/:id" element={session ? <Dashboard session={session} /> : <Navigate to="/login" />} />
-                        <Route path="/events" element={session ? <EventsListPage /> : <Navigate to="/login" />} />
+                        <Route path="/events" element={session ? <EventsListPage session={session} /> : <Navigate to="/login" />} />
                         <Route path="/admin" element={session ? <AdminDashboard session={session} /> : <Navigate to="/login" />} />
                         <Route path="/update-password" element={<UpdatePassword />} />
                         <Route path="/" element={<Navigate to={session ? "/dashboard" : "/login"} />} />

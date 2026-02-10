@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import Header from '../components/Header'
 
-const AdminDashboard = () => {
+const AdminDashboard = ({ session }) => {
     const [requests, setRequests] = useState([])
     const [userGroups, setUserGroups] = useState([])
     const [loading, setLoading] = useState(true)
@@ -116,12 +117,10 @@ const AdminDashboard = () => {
 
     return (
         <div className="dashboard-container">
-            <header className="dashboard-header">
-                <h1>Admin Dashboard</h1>
-                <div className="header-actions">
-                    <Link to="/dashboard" className="secondary-btn">Back to App</Link>
-                </div>
-            </header>
+            <Header session={session} />
+            <div className="admin-header-container mb-6">
+                <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+            </div>
 
             <section className="admin-section">
                 <h2>Pending Registration Requests</h2>
