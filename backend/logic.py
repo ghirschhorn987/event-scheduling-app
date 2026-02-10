@@ -3,12 +3,14 @@ from datetime import datetime, timedelta
 
 def enrich_event(event_data):
     """
-    Takes raw event data (joined with event_classes) and computes the detailed timestamps
+    Takes raw event data (joined with event_types) and computes the detailed timestamps
     and fields expected by the frontend 'Event' model.
     """
-    event_class = event_data.get("event_classes")
-    if not event_class:
-        # Should not happen if FK is enforced
+    # Prefer event_types, fallback to event_classes just in case legacy code passes it
+    event_type = event_data.get("event_types") or event_data.get("event_classes")
+    
+    if not event_type:
+        # Should not happen if FK is enforced and query is correct
         return event_data
 
     # Handle both string (ISO) and datetime objects for robustness in tests
@@ -18,16 +20,16 @@ def enrich_event(event_data):
         event_date = event_data["event_date"]
     
     # Enrich fields
-    event_data["name"] = event_class["name"]
-    event_data["max_signups"] = event_class["max_signups"]
+    event_data["name"] = event_type["name"]
+    event_data["max_signups"] = event_type["max_signups"]
     
     # Calculate timestamps
     # Timedeltas in minutes
-    event_data["roster_sign_up_open"] = event_date - timedelta(minutes=event_class["roster_sign_up_open_minutes"])
-    event_data["reserve_sign_up_open"] = event_date - timedelta(minutes=event_class["reserve_sign_up_open_minutes"])
+    event_data["roster_sign_up_open"] = event_date - timedelta(minutes=event_type["roster_sign_up_open_minutes"])
+    event_data["reserve_sign_up_open"] = event_date - timedelta(minutes=event_type["reserve_sign_up_open_minutes"])
     
-    event_data["initial_reserve_scheduling"] = event_date - timedelta(minutes=event_class["initial_reserve_scheduling_minutes"])
-    event_data["final_reserve_scheduling"] = event_date - timedelta(minutes=event_class["final_reserve_scheduling_minutes"])
+    event_data["initial_reserve_scheduling"] = event_date - timedelta(minutes=event_type["initial_reserve_scheduling_minutes"])
+    event_data["final_reserve_scheduling"] = event_date - timedelta(minutes=event_type["final_reserve_scheduling_minutes"])
     
     event_data["waitlist_sign_up_open"] = event_data["roster_sign_up_open"]
 

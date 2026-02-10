@@ -33,50 +33,67 @@ export default function EventsListPage({ session }) {
     return (
         <>
             <Header session={session} />
-            <div className="max-w-4xl mx-auto p-4">
-                <h1 className="text-2xl font-bold mb-6">Upcoming Events</h1>
+            <div className="max-w-6xl mx-auto p-4">
+                <h1 className="text-2xl font-bold mb-6 text-white">Upcoming Events</h1>
 
                 {events.length === 0 ? (
-                    <p>No upcoming events scheduled.</p>
+                    <p className="text-gray-400">No upcoming events scheduled.</p>
                 ) : (
-                    <div className="grid gap-4">
-                        {events.map(event => (
-                            <div key={event.id} className="border p-4 rounded shadow bg-white flex justify-between items-center">
-                                <div>
-                                    <h2 className="text-xl font-semibold">{event.name}</h2>
-                                    <p className="text-gray-600">
-                                        {new Date(event.event_date).toLocaleString([], {
-                                            weekday: 'long', month: 'short', day: 'numeric',
-                                            hour: 'numeric', minute: '2-digit'
-                                        })}
-                                    </p>
-                                    <div className="text-sm mt-2 text-gray-500">
-                                        Status: <span className="font-medium">{event.status}</span>
-                                    </div>
-                                </div>
+                    <div className="overflow-x-auto bg-slate-800 rounded-lg border border-slate-700 shadow-xl">
+                        <table className="w-full text-left text-sm text-gray-400">
+                            <thead className="bg-slate-900 text-gray-200 uppercase font-medium border-b border-slate-700">
+                                <tr>
+                                    <th scope="col" className="px-6 py-4">Date</th>
+                                    <th scope="col" className="px-6 py-4">Event</th>
+                                    <th scope="col" className="px-6 py-4">Status</th>
+                                    <th scope="col" className="px-6 py-4 text-center">Roster</th>
+                                    <th scope="col" className="px-6 py-4 text-center">Reserve</th>
+                                    <th scope="col" className="px-6 py-4 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-700">
+                                {events.map(event => {
+                                    const reserveCount = (event.counts?.waitlist || 0) + (event.counts?.holding || 0)
+                                    const dateStr = new Date(event.event_date).toLocaleString([], {
+                                        weekday: 'short', month: 'short', day: 'numeric',
+                                        hour: 'numeric', minute: '2-digit'
+                                    })
 
-                                <div className="flex items-center gap-6">
-                                    <div className="text-right text-sm">
-                                        <div title="People signed up for the main roster">
-                                            Roster: <strong>{event.counts?.roster || 0}</strong>/{event.max_signups}
-                                        </div>
-                                        <div title="People on the waitlist">
-                                            Waitlist: <strong>{event.counts?.waitlist || 0}</strong>
-                                        </div>
-                                        <div title="People in the holding area">
-                                            Holding: <strong>{event.counts?.holding || 0}</strong>
-                                        </div>
-                                    </div>
-
-                                    <Link
-                                        to={`/event/${event.id}`}
-                                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                                    >
-                                        View / Sign Up
-                                    </Link>
-                                </div>
-                            </div>
-                        ))}
+                                    return (
+                                        <tr key={event.id} className="hover:bg-slate-750 transition-colors">
+                                            <td className="px-6 py-4 whitespace-nowrap text-blue-400 font-medium">
+                                                {dateStr}
+                                            </td>
+                                            <td className="px-6 py-4 font-semibold text-white">
+                                                {event.name}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${event.status === 'SCHEDULED' ? 'bg-green-900 text-green-300' :
+                                                        event.status === 'CANCELLED' ? 'bg-red-900 text-red-300' :
+                                                            'bg-yellow-900 text-yellow-300'
+                                                    }`}>
+                                                    {event.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center whitespace-nowrap text-white font-mono">
+                                                {event.counts?.roster || 0}/{event.max_signups}
+                                            </td>
+                                            <td className="px-6 py-4 text-center whitespace-nowrap text-white font-mono">
+                                                {reserveCount}
+                                            </td>
+                                            <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                <Link
+                                                    to={`/event/${event.id}`}
+                                                    className="inline-block bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-500 transition-colors shadow-sm"
+                                                >
+                                                    View
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>

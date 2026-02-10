@@ -15,7 +15,7 @@ def test_enrich_event():
     
     event_data = {
         "event_date": base_iso,
-        "event_classes": {
+        "event_types": {
             "name": "Test Class",
             "max_signups": 15,
             "roster_sign_up_open_minutes": 60,

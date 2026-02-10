@@ -46,24 +46,24 @@ export default function Header({ session }) {
     }
 
     return (
-        <header className="bg-white shadow mb-6">
+        <header className="bg-slate-800 shadow mb-6">
             <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
                 <div className="flex items-center gap-6">
-                    <Link to="/events" className="text-xl font-bold text-gray-800 hover:text-blue-600">
+                    <Link to="/events" className="text-xl font-bold text-white hover:text-blue-400 whitespace-nowrap">
                         Event Scheduler
                     </Link>
 
-                    <nav className="hidden md:flex gap-4 text-sm font-medium">
+                    <nav className="hidden md:flex gap-4 text-sm font-medium items-center">
                         <Link
                             to="/events"
-                            className={`hover:text-blue-600 ${location.pathname === '/events' ? 'text-blue-600' : 'text-gray-600'}`}
+                            className={`whitespace-nowrap hover:text-blue-400 ${location.pathname === '/events' ? 'text-blue-400' : 'text-gray-300'}`}
                         >
                             Events
                         </Link>
                         {session && (
                             <Link
                                 to="/dashboard"
-                                className={`hover:text-blue-600 ${location.pathname === '/dashboard' ? 'text-blue-600' : 'text-gray-600'}`}
+                                className={`whitespace-nowrap hover:text-blue-400 ${location.pathname === '/dashboard' ? 'text-blue-400' : 'text-gray-300'}`}
                             >
                                 Dashboard
                             </Link>
@@ -71,7 +71,7 @@ export default function Header({ session }) {
                         {isAdmin && (
                             <Link
                                 to="/admin"
-                                className={`text-purple-600 hover:text-purple-800 ${location.pathname === '/admin' ? 'font-bold' : ''}`}
+                                className={`whitespace-nowrap text-purple-400 hover:text-purple-300 ${location.pathname === '/admin' ? 'font-bold' : ''}`}
                             >
                                 Admin Dashboard
                             </Link>
@@ -82,18 +82,18 @@ export default function Header({ session }) {
                 <div className="flex items-center gap-4">
                     {session ? (
                         <div className="flex items-center gap-4">
-                            <span className="text-sm text-gray-500 hidden sm:inline">
+                            <span className="text-sm text-gray-300 hidden sm:inline whitespace-nowrap">
                                 {session.user.email}
                             </span>
                             <button
                                 onClick={handleSignOut}
-                                className="text-sm text-red-600 hover:text-red-800 font-medium"
+                                className="text-sm text-red-500 hover:text-red-400 font-medium whitespace-nowrap"
                             >
                                 Sign Out
                             </button>
                         </div>
                     ) : (
-                        <Link to="/login" className="text-sm text-blue-600 hover:underline">
+                        <Link to="/login" className="text-sm text-blue-400 hover:underline whitespace-nowrap">
                             Log In
                         </Link>
                     )}
