@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
+import { checkUserAccess } from './utils/AccessControl'
 import Dashboard from './pages/Dashboard'
 import UpdatePassword from './pages/UpdatePassword'
 import Login from './components/Auth/Login'
@@ -16,16 +17,61 @@ function App() {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session)
+        const validateSession = async (session) => {
+            if (!session?.user) {
+                setSession(null)
+                setLoading(false)
+                return
+            }
+
+            // Check if user has a profile
+            const hasAccess = await checkUserAccess(session.user.id)
+
+            if (hasAccess) {
+                setSession(session)
+            } else {
+                console.warn("User has no profile. Access Denied.")
+                await supabase.auth.signOut()
+                setSession(null)
+                // We need to redirect to login with error, but we are inside useEffect.
+                // Since we are setting session to null, the routing below will render <Login /> or <Navigate to="/login" />.
+                // However, we want to pass the error param.
+                // The cleanest way is to use window.location or navigate if context allowed, but here we can just ensure
+                // the redirect happens.
+                // Since <Login> is rendered when !session, we can't easily pass props via Route logic without changing it.
+                // BUT: The user handles the "Redirect" manually via window.location.href or just accepts that they land on Login.
+                // A better approach: Modify the URL directly to include the error parameter so Login.jsx sees it.
+                const url = new URL(window.location.href)
+                url.pathname = '/login'
+                url.searchParams.set('error', 'access_denied')
+                window.history.replaceState({}, '', url)
+            }
             setLoading(false)
+        }
+
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            validateSession(session)
         })
 
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session)
-            setLoading(false)
+            // Note: onAuthStateChange fires on initial load too in some versions/configs, 
+            // but usually getSession handles the initial state.
+            // We should apply the same validation here.
+            // CAUTION: validation is async. 'session' might be set immediately by standard libs.
+            // We should delay setting state until validation passes.
+
+            // If it's a SIGN_OUT event, just set null
+            if (_event === 'SIGNED_OUT') {
+                setSession(null)
+                setLoading(false)
+            } else if (session) {
+                // If it's a SIGN_IN or TOKEN_REFRESH, validate.
+                // However, doing async work here might cause a flash of content if we aren't careful.
+                // But since we are reusing the same validateSession logic...
+                validateSession(session)
+            }
         })
 
         return () => subscription.unsubscribe()
