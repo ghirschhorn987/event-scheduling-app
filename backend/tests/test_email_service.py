@@ -1,3 +1,4 @@
+
 import pytest
 from unittest.mock import MagicMock, patch
 import sys
@@ -30,7 +31,7 @@ def test_send_acknowledgement(email_service):
              assert kwargs['params']['to'] == ["test@example.com"]
              assert "John Doe" in kwargs['params']['html']
 
-def test_send_rejection(email_service):
+def test_send_rejection_reason(email_service):
     with patch('resend.Emails.send') as mock_send:
         mock_send.return_value = {"id": "test-id"}
         import resend
@@ -39,4 +40,3 @@ def test_send_rejection(email_service):
         resp = email_service.send_rejection_reason("test@example.com", "Spam")
         assert resp is not None
         mock_send.assert_called_once()
-
