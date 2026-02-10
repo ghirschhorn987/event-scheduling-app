@@ -305,8 +305,10 @@ async def signup(body: SignupRequest, request: Request):
     # Parse event times (assuming ISO strings from DB)
     # Supabase returns ISO strings. We compare as strings or helper objects
     # Ideally standardise, but simpler comparison:
-    def to_dt(iso_str):
-        return datetime.fromisoformat(iso_str.replace('Z', '+00:00'))
+    def to_dt(val):
+        if isinstance(val, datetime):
+            return val
+        return datetime.fromisoformat(val.replace('Z', '+00:00'))
 
     roster_open = to_dt(event['roster_sign_up_open'])
     reserve_open = to_dt(event['reserve_sign_up_open'])

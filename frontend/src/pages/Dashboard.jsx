@@ -238,7 +238,7 @@ export default function Dashboard({ session }) {
                             <h2 className="text-2xl font-bold">Dashboard</h2>
                             <button className="secondary-btn" onClick={() => supabase.auth.signOut()}>Sign Out</button>
                         </header>
-                        <div className="bg-white p-6 rounded shadow">
+                        <div className="bg-slate-800 p-6 rounded shadow">
                             <h3 className="text-xl mb-2">No Upcoming Events</h3>
                             <p className="text-gray-600">Check back later for new schedules.</p>
                         </div>
@@ -260,7 +260,7 @@ export default function Dashboard({ session }) {
                         )}
 
                         {/* Status Bar */}
-                        <div className="bg-white p-4 rounded shadow mb-6">
+                        <div className="bg-slate-800 p-4 rounded shadow mb-6">
                             <h3 className="font-semibold mb-2">Event Status</h3>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>Roster: {eventList.length} / {nextEvent.max_signups}</div>
@@ -270,7 +270,7 @@ export default function Dashboard({ session }) {
                         </div>
 
                         {/* User Status / Actions */}
-                        <div className="bg-white p-6 rounded shadow mb-6">
+                        <div className="bg-slate-800 p-6 rounded shadow mb-6">
                             {userSignup ? (
                                 <div className="text-center">
                                     <p className="text-lg mb-4">You are: <strong>{userSignup.list_type.replace('_', ' ')}</strong> #{userSignup.sequence_number > 0 ? userSignup.sequence_number : '-'}</p>
@@ -298,7 +298,7 @@ export default function Dashboard({ session }) {
 
                         {/* Lists Display */}
                         <div className="space-y-4">
-                            <div className="bg-white p-4 rounded shadow">
+                            <div className="bg-slate-800 p-4 rounded shadow">
                                 <h3 className="font-bold border-b pb-2 mb-2">Main Roster</h3>
                                 <ul>
                                     {eventList.map((s, i) => (
@@ -310,7 +310,7 @@ export default function Dashboard({ session }) {
                                 </ul>
                             </div>
 
-                            <div className="bg-white p-4 rounded shadow">
+                            <div className="bg-slate-800 p-4 rounded shadow">
                                 <h3 className="font-bold border-b pb-2 mb-2">Waitlist</h3>
                                 <ul>
                                     {waitList.map((s, i) => (
@@ -323,7 +323,7 @@ export default function Dashboard({ session }) {
                             </div>
 
                             {holdingList.length > 0 && (
-                                <div className="bg-white p-4 rounded shadow">
+                                <div className="bg-slate-800 p-4 rounded shadow">
                                     <h3 className="font-bold border-b pb-2 mb-2">Holding Area</h3>
                                     <ul>
                                         {holdingList.map((s, i) => (
