@@ -119,10 +119,14 @@ export const supabase = useMock ? {
                             if (col === 'id' && activeMockUser && val === activeMockUser.id) {
                                 return {
                                     single: async () => ({ data: activeMockProfile, error: null }),
+                                    maybeSingle: async () => ({ data: activeMockProfile, error: null }),
                                     then: (cb) => cb({ data: [activeMockProfile], error: null })
                                 }
                             }
-                            return { single: async () => ({ data: null, error: { message: 'Not found' } }) }
+                            return {
+                                single: async () => ({ data: null, error: { message: 'Not found' } }),
+                                maybeSingle: async () => ({ data: null, error: null })
+                            }
                         }
                     }
                 }

