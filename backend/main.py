@@ -135,10 +135,17 @@ async def request_access(body: RegistrationRequest):
         # even if RLS is strict (though we set RLS to allow public insert).
         res = supabase.table("registration_requests").insert(payload).execute()
         
-        # Future: Send Email Notification to Admins
-        print(f"New Registration Request: {body.email}")
-        
-        return {"status": "success", "message": "Request received", "data": res.data[0]}
+        # Send Emails
+        request_data = res.data[0]
+        # Run in background? For MVP, synchronous valid.
+        try:
+            from email_service import email_service
+            email_service.send_user_acknowledgement(request_data['email'], request_data['full_name'])
+            email_service.send_admin_notification(request_data)
+        except Exception as email_e:
+            print(f"Failed to send email: {email_e}")
+
+        return {"status": "success", "message": "Request received", "data": request_data}
     except Exception as e:
         print(f"Error creating request: {e}")
         # Improve error message if unique violation
@@ -162,54 +169,46 @@ async def update_request(body: RegistrationUpdate, request: Request):
     admin = await get_current_admin(request)
     
     # 1. Update Request Status
+    # Map 'DECLINED_SILENT' -> 'DECLINED', 'DECLINED_MESSAGE' -> 'DECLINED'
+    # The frontend might send specific actions, but DB status is finite.
+    db_status = body.action
+    if body.action in ['DECLINED_SILENT', 'DECLINED_MESSAGE']:
+        db_status = 'DECLINED'
+    
     update_payload = {
-        "status": body.action, # APPROVED / DECLINED / INFO_NEEDED
+        "status": db_status, 
         "admin_notes": body.note,
         "assigned_role": body.role if body.action == 'APPROVED' else None
     }
     
     try:
+        # Fetch original request to get email
+        original = supabase.table("registration_requests").select("*").eq("id", body.request_id).single().execute()
+        if not original.data:
+             raise HTTPException(status_code=404, detail="Request not found")
+        
+        user_email = original.data['email']
+
         res = supabase.table("registration_requests").update(update_payload).eq("id", body.request_id).execute()
         
-        # 2. If APPROVED, Create User Profile?
-        # The prompt says: "The system should then add them to my profiles table (not the Supabase auth.users table)"
-        # "auth_user_id (foreign key to Supabase Auth) is initially NULL"
-        # Wait, our `profiles` table has `id` which IS the auth.users id.
-        # Primary Key constraint: `id UUID PRIMARY KEY REFERENCES auth.users(id)`
+        # 2. Handle Actions & Emails
+        from email_service import email_service
         
-        # ISSUE: We cannot insert into `profiles` with a random UUID if it references auth.users!
-        # Unless we remove that FK constraint?
-        # OR we create a `pre_auth_profiles` table?
-        # OR we invite them via Supabase Invite User API?
+        if body.action == 'APPROVED':
+            # TODO: Create Profile Logic (See notes previously)
+            # For now, we assume user will signup and we verify against this approved request? 
+            # Or we purely rely on email match.
+            pass
+            
+        elif body.action == 'DECLINED_MESSAGE':
+            if body.message:
+                email_service.send_rejection_reason(user_email, body.message)
+                
+        elif body.action == 'INFO_NEEDED':
+            if body.message:
+                email_service.send_more_info_request(user_email, body.message)
         
-        # "User Review Required": "The system should then add them to my profiles table... foreign key is initially NULL"
-        # My implementation_plan said: "The auth_user_id... is initially NULL".
-        # BUT `schema.sql` says: `id UUID PRIMARY KEY REFERENCES auth.users(id)`
-        
-        # WE NEED TO FIX THE PROFILE SCHEMA OR LOGIC
-        # If we want "Pre-created profiles", the `id` cannot be the Auth ID yet (since it doesn't exist).
-        # We probably need a separate column `auth_id` that is nullable unique, and a separate `id` for our internal profile.
-        
-        # FOR NOW: Let's assume we just approve the request. 
-        # The User then has to "Sign Up" via Frontend.
-        # Upon Signup, we match email -> find Approved Request -> Create Profile.
-        
-        # OR: We use `supabase.auth.admin.invite_user_by_email(email)`?
-        # This sends them a magic link. When they click it, they get an Auth ID.
-        # Then we create a profile.
-        
-        # Let's stick to the prompt Requirement: 
-        # "The system should then add them to my profiles table (not the Supabase auth.users table)."
-        # This implies we store them in `profiles`.
-        # So `profiles.id` CANNOT be `auth.users.id` FK if the user doesn't exist.
-        
-        # I will handle ONLY the status update for now. 
-        # I will document this SCHEMA CONFLICT for the user.
-        
-        # Actually, let's just create the Profile entry if we change schema later.
-        # For now, let's just return success on the Request Update.
-        
-        return {"status": "success", "message": f"Request marked as {body.action}", "data": res.data}
+        return {"status": "success", "message": f"Request marked as {db_status}", "data": res.data}
         
     except Exception as e:
         print(f"Error updating request: {e}")

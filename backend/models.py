@@ -50,3 +50,4 @@ class RegistrationUpdate(BaseModel):
     action: str  # 'APPROVE' or 'DECLINE' or 'INFO'
     role: Optional[str] = None # For approval (Primary, Secondary, etc.)
     note: Optional[str] = None
+    message: Optional[str] = None # Message to user for DECLINE or INFO actions
