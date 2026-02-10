@@ -164,6 +164,16 @@ async def list_requests(request: Request):
     res = supabase.table("registration_requests").select("*").order("created_at", desc=True).execute()
     return {"status": "success", "data": res.data}
 
+@app.get("/api/admin/user_groups")
+async def list_user_groups(request: Request):
+    """
+    Fetch all available user groups for the admin dropdown.
+    """
+    await get_current_admin(request)
+    
+    res = supabase.table("user_groups").select("*").order("name").execute()
+    return {"status": "success", "data": res.data}
+
 @app.post("/api/admin/requests/update")
 async def update_request(body: RegistrationUpdate, request: Request):
     admin = await get_current_admin(request)

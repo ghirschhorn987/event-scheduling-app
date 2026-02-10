@@ -11,25 +11,25 @@ from email_service import EmailService
 
 @pytest.fixture
 def email_service():
-    return EmailService()
+    # Patch the module-level variable to enable "real" sending logic (which we mock)
+    with patch('email_service.RESEND_API_KEY', 're_test_key'):
+        yield EmailService()
 
 def test_send_acknowledgement(email_service):
     with patch('resend.Emails.send') as mock_send:
         mock_send.return_value = {"id": "test-id"}
-        # Force API Key presence for test (or use mock if not present)
-        with patch('os.environ.get', return_value='re_123'):
-             # Re-init to pick up key
-             service = EmailService()
-             # Manually set key because of how the class inits
-             import resend
-             resend.api_key = "re_test"
-             
-             resp = service.send_user_acknowledgement("test@example.com", "John Doe")
-             assert resp is not None
-             mock_send.assert_called_once()
-             args, kwargs = mock_send.call_args
-             assert kwargs['params']['to'] == ["test@example.com"]
-             assert "John Doe" in kwargs['params']['html']
+        
+        # We need to ensure resend.api_key is set because EmailService.__init__ might have run before patching
+        import resend
+        resend.api_key = "re_test"
+
+        resp = email_service.send_user_acknowledgement("test@example.com", "John Doe")
+        assert resp is not None
+        mock_send.assert_called_once()
+        args, kwargs = mock_send.call_args
+        sent_params = args[0]
+        assert sent_params['to'] == ["test@example.com"]
+        assert "John Doe" in sent_params['html']
 
 def test_send_rejection_reason(email_service):
     with patch('resend.Emails.send') as mock_send:
