@@ -169,74 +169,92 @@ const AdminDashboard = ({ session }) => {
                                         {req.admin_notes && <p className="text-sm text-gray-400 mt-1"><em>Note: {req.admin_notes}</em></p>}
                                     </div>
 
-                                    {req.status === 'PENDING' && (
-                                        <div className="flex flex-col gap-2 min-w-[200px]">
+                                    {/* Action Buttons (Always visible, but dynamic) */}
+                                    <div className="flex flex-col gap-2 min-w-[200px]">
 
-                                            {/* Approve Section */}
-                                            <div className="flex flex-col gap-2">
-                                                <div className="text-sm font-semibold text-gray-300">Assign Groups:</div>
-                                                <div className="flex flex-col gap-1 max-h-32 overflow-y-auto border border-slate-700 p-2 rounded bg-slate-900">
-                                                    {userGroups.map(g => (
-                                                        <label key={g.id} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-white">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={(selectedGroupsMap[req.id] || []).includes(g.name)}
-                                                                onChange={() => toggleGroup(req.id, g.name)}
-                                                                className="rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-0 focus:ring-offset-0"
-                                                            />
-                                                            {g.name}
-                                                        </label>
-                                                    ))}
-                                                </div>
+                                        {/* Approve Section */}
+                                        <div className="flex flex-col gap-2">
+                                            <div className="text-sm font-semibold text-gray-300">Assign Groups:</div>
+                                            <div className="flex flex-col gap-1 max-h-32 overflow-y-auto border border-slate-700 p-2 rounded bg-slate-900">
+                                                {userGroups.map(g => (
+                                                    <label key={g.id} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-white">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={(selectedGroupsMap[req.id] || []).includes(g.name)}
+                                                            onChange={() => toggleGroup(req.id, g.name)}
+                                                            className="rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-0 focus:ring-offset-0"
+                                                        />
+                                                        {g.name}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    const groups = selectedGroupsMap[req.id] || []
+                                                    handleAction(req.id, 'APPROVED', groups)
+                                                }}
+                                                disabled={processing === req.id || req.status === 'APPROVED'}
+                                                className="bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 disabled:opacity-50 text-sm font-semibold mt-1"
+                                            >
+                                                {req.status === 'APPROVED' ? 'Approved' : 'Approve'}
+                                            </button>
+                                        </div>
+
+                                        {/* Other Actions */}
+                                        <div className="flex gap-2 mt-2">
+                                            <button
+                                                onClick={() => openModal(req, 'INFO')}
+                                                disabled={processing === req.id}
+                                                className="secondary-btn text-xs px-3 py-1.5"
+                                            >
+                                                Request Info
+                                            </button>
+
+                                            {req.status !== 'PENDING' && (
                                                 <button
                                                     onClick={() => {
-                                                        const groups = selectedGroupsMap[req.id] || []
-                                                        // if (groups.length === 0) return alert("Please select at least one group") // Optional: Allow no groups?
-                                                        // User said "zero or more". So empty is allowed.
-
-                                                        // We pass 'groups' which matches backend 'groups' field? 
-                                                        // Backend expects 'groups' in body, but 'handleAction' takes (id, action, role, message).
-                                                        // We need to modify handleAction signature or pass object.
-                                                        // Let's modify handleAction to accept an options object or repurpose 'role' arg.
-                                                        // Since 'role' was string, let's pass the array as the 3rd arg and update handleAction.
-                                                        handleAction(req.id, 'APPROVED', groups)
+                                                        const msg = req.status === 'APPROVED'
+                                                            ? "Changing an APPROVED request to PENDING will DELETE the user's account, profile, and all signups. Are you sure?"
+                                                            : "Move this request back to PENDING?";
+                                                        if (window.confirm(msg)) {
+                                                            handleAction(req.id, 'PENDING')
+                                                        }
                                                     }}
                                                     disabled={processing === req.id}
-                                                    className="bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 disabled:opacity-50 text-sm font-semibold mt-1"
+                                                    className="bg-slate-700 text-gray-300 hover:bg-slate-600 px-3 py-1.5 rounded text-xs border border-slate-600"
                                                 >
-                                                    Approve
+                                                    Reset to Pending
                                                 </button>
-                                            </div>
-
-                                            {/* Other Actions */}
-                                            <div className="flex gap-2 mt-2">
-                                                <button
-                                                    onClick={() => openModal(req, 'INFO')}
-                                                    disabled={processing === req.id}
-                                                    className="secondary-btn text-xs px-3 py-1.5"
-                                                >
-                                                    Request Info
-                                                </button>
-                                            </div>
-
-                                            <div className="flex gap-2 mt-1">
-                                                <button
-                                                    onClick={() => handleAction(req.id, 'DECLINED_SILENT')}
-                                                    disabled={processing === req.id}
-                                                    className="bg-red-900/50 text-red-300 border border-red-800 hover:bg-red-900 px-3 py-1.5 rounded text-xs"
-                                                >
-                                                    Decline (Silent)
-                                                </button>
-                                                <button
-                                                    onClick={() => openModal(req, 'DECLINE')}
-                                                    disabled={processing === req.id}
-                                                    className="bg-red-600 text-white hover:bg-red-700 px-3 py-1.5 rounded text-xs"
-                                                >
-                                                    Decline (Msg)
-                                                </button>
-                                            </div>
+                                            )}
                                         </div>
-                                    )}
+
+                                        <div className="flex gap-2 mt-1">
+                                            <button
+                                                onClick={() => {
+                                                    if (req.status === 'APPROVED') {
+                                                        if (!window.confirm("Declining an APPROVED request will DELETE the user's account and all signups. Proceed?")) return;
+                                                    }
+                                                    handleAction(req.id, 'DECLINED_SILENT')
+                                                }}
+                                                disabled={processing === req.id || req.status === 'DECLINED'}
+                                                className="bg-red-900/50 text-red-300 border border-red-800 hover:bg-red-900 px-3 py-1.5 rounded text-xs disabled:opacity-50"
+                                            >
+                                                Decline (Silent)
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (req.status === 'APPROVED') {
+                                                        if (!window.confirm("Declining an APPROVED request will DELETE the user's account and all signups. Proceed?")) return;
+                                                    }
+                                                    openModal(req, 'DECLINE')
+                                                }}
+                                                disabled={processing === req.id || req.status === 'DECLINED'}
+                                                className="bg-red-600 text-white hover:bg-red-700 px-3 py-1.5 rounded text-xs disabled:opacity-50"
+                                            >
+                                                Decline (Msg)
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         ))}

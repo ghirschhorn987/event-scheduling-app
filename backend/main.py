@@ -195,17 +195,34 @@ async def update_request(body: RegistrationUpdate, request: Request):
     
     update_payload = {
         "status": db_status, 
-        "admin_notes": body.note,
-        "assigned_role": body.role if body.action == 'APPROVED' else None
+        "admin_notes": body.note
     }
     
     try:
-        # Fetch original request to get email
+        # Fetch original request to get email and current status
         original = supabase.table("registration_requests").select("*").eq("id", body.request_id).single().execute()
         if not original.data:
              raise HTTPException(status_code=404, detail="Request not found")
         
         user_email = original.data['email']
+        previous_status = original.data['status']
+
+        # Handle revocation/reset: if it WAS approved and now it is NOT
+        if previous_status == 'APPROVED' and db_status != 'APPROVED':
+            # 1. Look for linked profile
+            profile_res = supabase.table("profiles").select("auth_user_id").eq("email", user_email).maybeSingle().execute()
+            
+            if profile_res.data:
+                auth_id = profile_res.data.get('auth_user_id')
+                if auth_id:
+                    # Delete Supabase Auth user (DB cascade will clean up profile if migration applied)
+                    try:
+                        supabase.auth.admin.delete_user(auth_id)
+                    except Exception as e:
+                        print(f"Warning: Failed to delete auth user {auth_id}: {e}")
+                
+                # Delete profile record (if auth delete didn't cascade or if no auth user existed yet)
+                supabase.table("profiles").delete().eq("email", user_email).execute()
 
         res = supabase.table("registration_requests").update(update_payload).eq("id", body.request_id).execute()
         

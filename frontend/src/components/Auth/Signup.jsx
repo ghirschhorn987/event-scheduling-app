@@ -9,6 +9,18 @@ export default function Signup() {
     const [message, setMessage] = useState('')
     const [success, setSuccess] = useState(false)
 
+    const handleGoogleSignup = async () => {
+        setLoading(true)
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: `${window.location.origin}/dashboard`
+            }
+        })
+        if (error) setMessage(error.message)
+        setLoading(false)
+    }
+
     const handleSignup = async (e) => {
         e.preventDefault()
         setLoading(true)
@@ -23,13 +35,13 @@ export default function Signup() {
         })
 
         if (error) {
-            if (error.message.includes('ACCESS_DENIED')) {
+            if (error.message.includes('ACCESS_DENIED') || error.message.includes('rejected by software resource')) {
                 setMessage(
                     <span>
                         It looks like you haven't been approved yet.
                         Please <Link to="/request-access" style={{ color: 'inherit', textDecoration: 'underline' }}>Request Access</Link> first.
                         <br /><br />
-                        If you believe this is an error, contact support@skeddle.club.
+                        Note: Account creation is only permitted for pre-approved email addresses.
                     </span>
                 )
             } else {
@@ -39,55 +51,87 @@ export default function Signup() {
             setSuccess(true)
             setMessage('Registration successful! Check your email for the confirmation link.')
         } else {
-            // Sometimes auto-login happens if email confirmation is off
             setMessage('Registration successful!')
         }
         setLoading(false)
     }
 
     return (
-        <div className="login-card">
-            <h1>Create Account</h1>
-            <p>Sign up to start scheduling events</p>
+        <div className="login-card signup-card">
+            <h1>Create Account For Approved User</h1>
+
+            <div className="approval-note">
+                <span className="icon">⚠️</span>
+                <p><strong>Note:</strong> Only pre-approved email addresses can create an account. If you haven't been approved yet, this process will result in an error.</p>
+            </div>
 
             {success ? (
-                <div className="alert">
+                <div className="alert success-alert">
                     <p>{message}</p>
-                    <p style={{ marginTop: '1rem' }}><Link to="/login">Back to Login</Link></p>
+                    <p style={{ marginTop: '1rem' }}><Link to="/login" className="back-link">Back to Login</Link></p>
                 </div>
             ) : (
-                <>
-                    <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <input
-                            type="email"
-                            placeholder="Email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            className="input-field"
-                        />
+                <div className="auth-options">
+                    {/* Method 1: Password */}
+                    <div className="auth-option-section">
+                        <div className="option-header">Option 1: Site-Specific Password</div>
+                        <p className="option-description">
+                            Create a dedicated password for this site. It is encrypted and remains private;
+                            the system never sees your actual password. It can't be retrieved, only reset if forgotten.
+                        </p>
 
-                        <input
-                            type="password"
-                            placeholder="Password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            className="input-field"
-                            minLength={6}
-                        />
+                        <form onSubmit={handleSignup} className="email-signup-form">
+                            <input
+                                type="email"
+                                placeholder="Email Address"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                className="input-field"
+                            />
 
-                        <button className="primary-btn" type="submit" disabled={loading}>
-                            {loading ? 'Creating Account...' : 'Sign Up'}
+                            <input
+                                type="password"
+                                placeholder="Password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                className="input-field"
+                                minLength={6}
+                            />
+
+                            <button className="primary-btn" type="submit" disabled={loading}>
+                                {loading ? 'Creating Account...' : 'Create with Password'}
+                            </button>
+                        </form>
+                    </div>
+
+                    <div className="divider">OR</div>
+
+                    {/* Method 2: Google */}
+                    <div className="auth-option-section">
+                        <div className="option-header">Option 2: Google Authentication</div>
+                        <p className="option-description">
+                            Use your Google account to sign in securely without creating a new password.
+                            Google validates your identity, and the system never sees your credentials.
+                        </p>
+                        <p className="security-tip">
+                            <strong>Note:</strong> You will be redirected to <code>qyeitwnnozvwstxhwhwf.supabase.co</code> for validation.
+                            This is our secure database host and is normal.
+                        </p>
+
+                        <button className="secondary-btn google-btn" onClick={handleGoogleSignup} disabled={loading}>
+                            <img src="/google-icon.svg" alt="" className="google-icon" />
+                            Continue with Google
                         </button>
-                    </form>
+                    </div>
 
-                    <div className="auth-links">
+                    <div className="auth-footer">
                         <p>Already have an account? <Link to="/login">Sign In</Link></p>
                     </div>
 
-                    {message && <p style={{ marginTop: '1rem', color: 'red' }}>{message}</p>}
-                </>
+                    {message && <div className="error-box">{message}</div>}
+                </div>
             )}
         </div>
     )
