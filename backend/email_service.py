@@ -25,7 +25,7 @@ class EmailService:
 
         try:
             params = {
-                "from": "Scheduled <support@skeddle.club>", # Updated to verified domain
+                "from": "Skeddle <support@skeddle.club>", # Updated to verified domain
                 "to": [to_email],
                 "subject": subject,
                 "html": html_content,
@@ -37,16 +37,16 @@ class EmailService:
             return None
 
     def send_user_acknowledgement(self, to_email: str, name: str):
-        subject = "Registration Request Received - Scheduled"
+        subject = "Registration Request Received - Skeddle"
         html = f"""
         <html>
             <body>
                 <p>Hi {name},</p>
-                <p>We have received your request to register for the Scheduled App.</p>
+                <p>We have received your request to register for the Skeddle App.</p>
                 <p>Please wait for a reply. If you do not hear back within 48 hours, please contact <a href="mailto:support@skeddle.club">support@skeddle.club</a>.</p>
                 <br>
                 <p>Best regards,</p>
-                <p>The Scheduled Team</p>
+                <p>The Skeddle Team</p>
             </body>
         </html>
         """
@@ -75,12 +75,12 @@ class EmailService:
         return self._send(admin_email, subject, html)
 
     def send_rejection_reason(self, to_email: str, reason: str):
-        subject = "Update on your Registration Request - Scheduled"
+        subject = "Update on your Registration Request - Skeddle"
         html = f"""
         <html>
             <body>
                 <p>Hello,</p>
-                <p>Thank you for your interest in Scheduled.</p>
+                <p>Thank you for your interest in Skeddle.</p>
                 <p>Unfortunately, we are unable to approve your registration request at this time.</p>
                 <p><strong>Reason:</strong></p>
                 <blockquote style="background: #f9f9f9; padding: 10px; border-left: 3px solid #ccc;">
@@ -88,14 +88,14 @@ class EmailService:
                 </blockquote>
                 <br>
                 <p>Best regards,</p>
-                <p>The Scheduled Team</p>
+                <p>The Skeddle Team</p>
             </body>
         </html>
         """
         return self._send(to_email, subject, html)
 
     def send_more_info_request(self, to_email: str, message: str):
-        subject = "More Information Needed - Scheduled"
+        subject = "More Information Needed - Skeddle"
         html = f"""
         <html>
             <body>
@@ -108,7 +108,7 @@ class EmailService:
                 <p>Please reply to this email with the requested details.</p>
                 <br>
                 <p>Best regards,</p>
-                <p>The Scheduled Team</p>
+                <p>The Skeddle Team</p>
             </body>
         </html>
         """

@@ -118,7 +118,7 @@ export const supabase = useMock ? {
                 select: (columns) => {
                     return {
                         eq: (col, val) => {
-                            if (col === 'id' && activeMockUser && val === activeMockUser.id) {
+                            if ((col === 'id' || col === 'auth_user_id') && activeMockUser && val === activeMockUser.id) {
                                 return {
                                     single: async () => ({ data: activeMockProfile, error: null }),
                                     maybeSingle: async () => ({ data: activeMockProfile, error: null }),
