@@ -78,20 +78,26 @@ async def get_current_admin(request: Request):
         
     # Real Check: Fetch Profile -> Groups
     # New Schema: profiles -> profile_groups -> user_groups
-    res = supabase.table("profiles").select("*, profile_groups(user_groups(name))").eq("auth_user_id", user.id).single().execute()
-    
-    is_admin = False
-    if res.data and res.data.get("profile_groups"):
-        # profile_groups is a list of objects: [{'user_groups': {'name': 'Admin'}}, ...]
-        for pg in res.data["profile_groups"]:
-            if pg.get("user_groups") and pg["user_groups"].get("name") in ["Super Admin", "Admin"]:
-                is_admin = True
-                break
-    
-    if is_admin:
-        return user
+    try:
+        res = supabase.table("profiles").select("*, profile_groups(user_groups(name))").eq("auth_user_id", user.id).single().execute()
+        
+        is_admin = False
+        if res.data and res.data.get("profile_groups"):
+            # profile_groups is a list of objects: [{'user_groups': {'name': 'Admin'}}, ...]
+            for pg in res.data["profile_groups"]:
+                if pg.get("user_groups"):
+                    group_name = pg["user_groups"].get("name")
+                    if group_name in ["Super Admin", "SuperAdmin", "Admin"]:
+                        is_admin = True
+                        break
+        
+        if is_admin:
+            return user
+    except Exception as e:
+        print(f"Admin Check DB Error: {e}")
             
     # If not found
+    print(f"Access Denied for user: {user.email} (ID: {user.id})")
     raise HTTPException(status_code=403, detail="Admin privileges required")
 
 # --- Helpers ---
@@ -262,7 +268,7 @@ async def update_request(body: RegistrationUpdate, request: Request):
                         if g_name in group_map:
                             group_inserts.append({
                                 "profile_id": profile_id,
-                                "user_group_id": group_map[g_name]
+                                "group_id": group_map[g_name]
                             })
                     
                     if group_inserts:
