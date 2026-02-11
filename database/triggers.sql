@@ -15,21 +15,10 @@ BEGIN
     UPDATE public.profiles
     SET auth_user_id = new.id
     WHERE id = existing_profile_id;
-    
-    -- Optionally update name if it was missing?
-    -- UPDATE public.profiles SET name = ... WHERE ...
   ELSE
     -- No pre-provisioned profile found.
-    -- Option A: Create a 'Guest' profile?
-    -- Option B: Do nothing (User has no profile, thus no access).
-    -- Given the requirements "Admin approves -> Profile created", 
-    -- if they signup *without* approval, they shouldn't get a profile.
-    -- However, legacy behavior allowed signup. 
-    -- Let's NOT create a profile here. If they aren't pre-provisioned, they have to request access.
-    
-    -- Logging (optional)
-    -- RAISE NOTICE 'User signed up without pre-provisioned profile: %', new.email;
-    NULL;
+    -- HARD BLOCK: Prevent auth.users record from being created.
+    RAISE EXCEPTION 'ACCESS_DENIED: This email has not been approved for access. Please request access at /request-access';
   END IF;
 
   RETURN new;

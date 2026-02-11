@@ -23,7 +23,18 @@ export default function Signup() {
         })
 
         if (error) {
-            setMessage(error.message)
+            if (error.message.includes('ACCESS_DENIED')) {
+                setMessage(
+                    <span>
+                        It looks like you haven't been approved yet.
+                        Please <Link to="/request-access" style={{ color: 'inherit', textDecoration: 'underline' }}>Request Access</Link> first.
+                        <br /><br />
+                        If you believe this is an error, contact support@skeddle.club.
+                    </span>
+                )
+            } else {
+                setMessage(error.message)
+            }
         } else if (data.user && !data.session) {
             setSuccess(true)
             setMessage('Registration successful! Check your email for the confirmation link.')

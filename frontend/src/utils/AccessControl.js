@@ -12,7 +12,7 @@ export const checkUserAccess = async (userId) => {
         const { data, error } = await supabase
             .from('profiles')
             .select('id')
-            .eq('id', userId)
+            .eq('auth_user_id', userId)
             .maybeSingle()
 
         if (error) {

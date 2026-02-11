@@ -78,7 +78,7 @@ async def get_current_admin(request: Request):
         
     # Real Check: Fetch Profile -> Groups
     # New Schema: profiles -> profile_groups -> user_groups
-    res = supabase.table("profiles").select("*, profile_groups(user_groups(name))").eq("id", user.id).single().execute()
+    res = supabase.table("profiles").select("*, profile_groups(user_groups(name))").eq("auth_user_id", user.id).single().execute()
     
     is_admin = False
     if res.data and res.data.get("profile_groups"):
@@ -308,7 +308,7 @@ async def signup(body: SignupRequest, request: Request):
 
     try:
         # Fetch profile with groups (via join table)
-        profile_res = supabase.table("profiles").select("*, profile_groups(user_groups(name))").eq("id", user_id).execute()
+        profile_res = supabase.table("profiles").select("*, profile_groups(user_groups(name))").eq("auth_user_id", user_id).execute()
         
         profile = None
         if not profile_res.data:

@@ -5,7 +5,8 @@ CREATE TYPE list_type AS ENUM ('EVENT', 'WAITLIST', 'WAITLIST_HOLDING');
 -- User Groups
 CREATE TABLE user_groups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL UNIQUE
+  name TEXT NOT NULL UNIQUE,
+  description TEXT
 );
 
 -- Profiles (Public user data linked to auth.users)
