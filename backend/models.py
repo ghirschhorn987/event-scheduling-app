@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class SignupRequest(BaseModel):
@@ -47,7 +47,7 @@ class RegistrationRequest(BaseModel):
 
 class RegistrationUpdate(BaseModel):
     request_id: str
-    action: str  # 'APPROVE' or 'DECLINE' or 'INFO'
-    role: Optional[str] = None # For approval (Primary, Secondary, etc.)
+    action: str  # 'APPROVED' or 'DECLINED' or 'INFO'
+    groups: Optional[List[str]] = [] # For approval (List of group names)
     note: Optional[str] = None
     message: Optional[str] = None # Message to user for DECLINE or INFO actions

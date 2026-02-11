@@ -122,8 +122,9 @@ def create_user_with_groups(email, password, name, group_names, all_groups_map):
     try:
         supabase.table("profiles").insert({
             "id": user_id,
+            "auth_user_id": user_id,
+            "email": email,
             "name": name
-            # "email": email # Removed 
         }).execute()
     except Exception as e:
         print(f"  Error creating profile: {e}")

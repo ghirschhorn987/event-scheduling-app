@@ -25,7 +25,7 @@ class EmailService:
 
         try:
             params = {
-                "from": "Scheduled <onboarding@resend.dev>", # Default Test Domain or verified domain
+                "from": "Scheduled <support@skeddle.club>", # Updated to verified domain
                 "to": [to_email],
                 "subject": subject,
                 "html": html_content,
@@ -43,7 +43,7 @@ class EmailService:
             <body>
                 <p>Hi {name},</p>
                 <p>We have received your request to register for the Scheduled App.</p>
-                <p>Please wait for a reply. If you do not hear back within 48 hours, please contact <a href="mailto:support@scheduled.com">support@scheduled.com</a>.</p>
+                <p>Please wait for a reply. If you do not hear back within 48 hours, please contact <a href="mailto:support@skeddle.club">support@skeddle.club</a>.</p>
                 <br>
                 <p>Best regards,</p>
                 <p>The Scheduled Team</p>
@@ -57,7 +57,7 @@ class EmailService:
         subject = f"New Registration Request: {request_data.get('full_name', 'Unknown')}"
         
         # Link to admin dashboard (assuming localhost or deployed url, let's use a generic relative path for now or just text)
-        admin_link = "https://scheduled-app.com/admin" # Replace with actual URL if known env var
+        admin_link = "https://skeddle.club/admin" # Updated to production URL
 
         html = f"""
         <html>
@@ -109,6 +109,24 @@ class EmailService:
                 <br>
                 <p>Best regards,</p>
                 <p>The Scheduled Team</p>
+            </body>
+        </html>
+        """
+        return self._send(to_email, subject, html)
+
+    def send_access_granted(self, to_email: str, name: str):
+        subject = "Welcome to Skeddle - Access Granted"
+        login_link = "https://skeddle.club/login"
+        html = f"""
+        <html>
+            <body>
+                <p>Hi {name},</p>
+                <p>Good news! Your request to join Skeddle has been approved.</p>
+                <p>You can now log in and sign up for events.</p>
+                <p><a href="{login_link}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Log In to Skeddle</a></p>
+                <br>
+                <p>Welcome aboard,</p>
+                <p>The Skeddle Team</p>
             </body>
         </html>
         """

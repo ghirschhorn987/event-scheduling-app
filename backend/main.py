@@ -213,10 +213,48 @@ async def update_request(body: RegistrationUpdate, request: Request):
         from email_service import email_service
         
         if body.action == 'APPROVED':
-            # TODO: Create Profile Logic (See notes previously)
-            # For now, we assume user will signup and we verify against this approved request? 
-            # Or we purely rely on email match.
-            pass
+            # Create Profile immediately (Pre-provision)
+            # Check if profiles table has this email
+            profile_res = supabase.table("profiles").select("id").eq("email", user_email).execute()
+            
+            profile_id = None
+            if profile_res.data:
+                profile_id = profile_res.data[0]['id']
+            else:
+                # Create new profile
+                new_profile = {
+                    "email": user_email,
+                    "name": original.data.get('full_name') or 'User'
+                }
+                # Auth ID is null initially
+                create_res = supabase.table("profiles").insert(new_profile).execute()
+                if create_res.data:
+                    profile_id = create_res.data[0]['id']
+            
+            if profile_id:
+                # Assign Groups
+                # body.groups is expected to be a list of strings
+                if body.groups:
+                    # Resolve group names to IDs
+                    # Optimization: fetch all groups once map them (or cache them)
+                    all_groups = supabase.table("user_groups").select("id, name").execute()
+                    group_map = {g['name']: g['id'] for g in all_groups.data}
+                    
+                    group_inserts = []
+                    for g_name in body.groups:
+                        if g_name in group_map:
+                            group_inserts.append({
+                                "profile_id": profile_id,
+                                "user_group_id": group_map[g_name]
+                            })
+                    
+                    if group_inserts:
+                        # Clear existing for this profile to handle updates (Set behavior)
+                        supabase.table("profile_groups").delete().eq("profile_id", profile_id).execute()
+                        supabase.table("profile_groups").insert(group_inserts).execute()
+
+            # Send Access Granted Email
+            email_service.send_access_granted(user_email, original.data.get('full_name', 'User'))
             
         elif body.action == 'DECLINED_MESSAGE':
             if body.message:
@@ -278,14 +316,11 @@ async def signup(body: SignupRequest, request: Request):
             print(f"Profile not found for {user_id}. Attempting to create with Service Role...")
             try:
                 # We utilize the 'supabase' client which should now have SERVICE ROLE capabilities from db.py
-                new_profile = {"id": user_id}
-                
-                # If we have email/metadata from the auth token, we could populate it here!
-                if auth_user.email:
-                    # NOTE: We removed 'email' from profiles table in refactor!
-                    # So we only set what's available and valid.
-                    # Name is still valid.
-                    pass
+                new_profile = {
+                    "id": user_id,
+                    "auth_user_id": user_id,  # Link to auth user
+                    "email": auth_user.email  # Required for pre-provisioning schema
+                }
                 
                 # Attempt to get name from metadata
                 meta = auth_user.user_metadata or {}

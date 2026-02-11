@@ -10,6 +10,19 @@ const AdminDashboard = ({ session }) => {
     const [error, setError] = useState(null)
     const [processing, setProcessing] = useState(null) // ID of request being processed
 
+    const [selectedGroupsMap, setSelectedGroupsMap] = useState({})
+
+    const toggleGroup = (reqId, groupName) => {
+        setSelectedGroupsMap(prev => {
+            const current = prev[reqId] || []
+            if (current.includes(groupName)) {
+                return { ...prev, [reqId]: current.filter(g => g !== groupName) }
+            } else {
+                return { ...prev, [reqId]: [...current, groupName] }
+            }
+        })
+    }
+
     // Modal State
     const [modalOpen, setModalOpen] = useState(false)
     const [modalType, setModalType] = useState(null) // 'DECLINE' | 'INFO'
@@ -50,11 +63,29 @@ const AdminDashboard = ({ session }) => {
         }
     }
 
-    const handleAction = async (requestId, action, role = null, message = null) => {
+    const handleAction = async (requestId, action, groupsOrRole = null, message = null) => {
         setProcessing(requestId)
         try {
             const session = await supabase.auth.getSession()
             const token = session.data.session?.access_token
+
+            // Determine payload
+            // Old: role: role
+            // New: groups: groupsOrRole (if array)
+
+            const payload = {
+                request_id: requestId,
+                action: action,
+                note: action === 'APPROVED' ? 'Approved' : 'Declined',
+                message: message
+            }
+
+            if (Array.isArray(groupsOrRole)) {
+                payload.groups = groupsOrRole
+            } else if (groupsOrRole) {
+                // Legacy fallback or DECLINE logic if needed
+                // payload.role = groupsOrRole 
+            }
 
             const res = await fetch('/api/admin/requests/update', {
                 method: 'POST',
@@ -62,13 +93,7 @@ const AdminDashboard = ({ session }) => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({
-                    request_id: requestId,
-                    action: action,
-                    role: role,
-                    note: action === 'APPROVED' ? `Approved as ${role}` : 'Declined',
-                    message: message // Optional message for user
-                })
+                body: JSON.stringify(payload)
             })
 
             if (!res.ok) throw new Error("Update failed")
@@ -148,22 +173,36 @@ const AdminDashboard = ({ session }) => {
                                         <div className="flex flex-col gap-2 min-w-[200px]">
 
                                             {/* Approve Section */}
-                                            <div className="flex gap-2 items-center">
-                                                <select id={`role-${req.id}`} className="bg-slate-900 border border-slate-700 text-white p-2 rounded text-sm w-full">
-                                                    <option value="" disabled>Select Group</option>
+                                            <div className="flex flex-col gap-2">
+                                                <div className="text-sm font-semibold text-gray-300">Assign Groups:</div>
+                                                <div className="flex flex-col gap-1 max-h-32 overflow-y-auto border border-slate-700 p-2 rounded bg-slate-900">
                                                     {userGroups.map(g => (
-                                                        <option key={g.id} value={g.name}>{g.name}</option>
+                                                        <label key={g.id} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-white">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={(selectedGroupsMap[req.id] || []).includes(g.name)}
+                                                                onChange={() => toggleGroup(req.id, g.name)}
+                                                                className="rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-0 focus:ring-offset-0"
+                                                            />
+                                                            {g.name}
+                                                        </label>
                                                     ))}
-                                                </select>
+                                                </div>
                                                 <button
                                                     onClick={() => {
-                                                        const select = document.getElementById(`role-${req.id}`)
-                                                        const role = select.value
-                                                        if (!role) return alert("Please select a user group")
-                                                        handleAction(req.id, 'APPROVED', role)
+                                                        const groups = selectedGroupsMap[req.id] || []
+                                                        // if (groups.length === 0) return alert("Please select at least one group") // Optional: Allow no groups?
+                                                        // User said "zero or more". So empty is allowed.
+
+                                                        // We pass 'groups' which matches backend 'groups' field? 
+                                                        // Backend expects 'groups' in body, but 'handleAction' takes (id, action, role, message).
+                                                        // We need to modify handleAction signature or pass object.
+                                                        // Let's modify handleAction to accept an options object or repurpose 'role' arg.
+                                                        // Since 'role' was string, let's pass the array as the 3rd arg and update handleAction.
+                                                        handleAction(req.id, 'APPROVED', groups)
                                                     }}
                                                     disabled={processing === req.id}
-                                                    className="bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 disabled:opacity-50 text-sm font-semibold"
+                                                    className="bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 disabled:opacity-50 text-sm font-semibold mt-1"
                                                 >
                                                     Approve
                                                 </button>
