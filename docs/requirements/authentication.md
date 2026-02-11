@@ -69,7 +69,38 @@ The standard User Groups are:
 2.  **Profile Linking**: The `email` column in the `profiles` table is unique and serves as the primary link during onboarding.
 3.  **Many-to-Many Groups**: User groups are managed via a join table (`profile_groups`).
 
+## Mock Authentication (Development)
+
+The system includes a **Mock Authentication** mode for development and testing, allowing developers to switch between different user roles without needing real credentials or Google accounts.
+
+### 1. Enabling Mock Mode
+Mock mode is controlled by environment variables:
+*   **Frontend**: `VITE_USE_MOCK_AUTH=true` in `.env`
+*   **Backend**: `USE_MOCK_AUTH=true` in `backend/.env`
+
+### 2. System Flow
+1.  **Selection**: A developer selects a user from the **Mock Auth Toolbar** in the frontend. 
+2.  **Storage**: The selected user's data is stored in `localStorage` under the key `mock_auth_user`.
+3.  **Frontend Interception**: The `supabaseClient.js` intercepts all `supabase.auth` calls and returns a fake session. The `access_token` is set to the convention `mock-token-{user_uuid}`.
+4.  **Backend Interception**: The backend middleware in `main.py` detects tokens starting with `mock-token-`. It skips normal Supabase JWT validation and extracts the user ID directly from the token string.
+5.  **Database Coupling (Explicit Requirements)**:
+    - **Profiles Table**: The user's UUID must exist in the `profiles` table. This is the primary source for permissions and signup logic.
+    - **Auth Table**: While the backend bypasses JWT verification, mock users **must also exist in the `auth.users` table**. This ensures database integrity (as `profiles` contains an `auth_user_id` foreign key) and allows the application to behave correctly if RLS is encountered or if the user transitions to real authentication.
+    - **Consistency**: The UUID in `mock_users.json` must exactly match the `id` (and/or `auth_user_id`) in the database.
+
+### 3. Mock Data Conventions
+*   **Source of Truth**: Mock users are defined in `frontend/src/mock_users.json`.
+*   **User IDs**: These should be valid UUIDs that match records in the local development database.
+*   **Setup Script**: The `create_mock_users.py` script can be used to synchronize `mock_users.json` with the database `profiles` and `auth.users` tables.
+
+### 4. Production vs. Development
+*   **Shared Project Environment**: In the current project setup, both local development and production point to the same Supabase backend.
+*   **Data Coexistence**: Because of this shared setup, **mock users will exist in the same database as real users**.
+*   **Safety Conventions**:
+    - Mock users are identified by specific patterns (e.g., `mock.*@test.com` emails).
+    - The code-level interception (`USE_MOCK_AUTH=true`) is what enables/disables the mock flow. In the live production environment, this should be set to `false` to ensure only real Supabase Auth tokens are accepted.
+*   **Data Residence**: Mock users reside as real records in the **Supabase `auth.users`** table and the application's **`profiles`** and **`profile_groups`** tables. This ensures that database constraints, triggers, and RLS still behave realistically even when testing locally.
+
 ---
 
 ## Open Questions 
-
