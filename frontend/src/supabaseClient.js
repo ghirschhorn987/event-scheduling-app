@@ -73,12 +73,14 @@ const mockSession = activeMockUser ? {
 const activeMockProfile = activeMockUser ? {
     id: activeMockUser.id,
     name: activeMockUser.name,
-    email: activeMockUser.email,
-    user_group_id: activeMockUser.role === 'primary' ? 'primary-group-uuid' :
-        activeMockUser.role === 'secondary' ? 'secondary-group-uuid' : null
-    // Note: Group UUIDs are not known here easily unless we hardcode or fetch. 
-    // For now, let's return basic profile. 
-    // The Toolbar JSON has 'role'. We can map that to a fake group ID or just trust the backend.
+    // email: activeMockUser.email, // Removed from profile schema
+    // Map 'groups' array (strings) to profile_groups structure
+    profile_groups: (activeMockUser.groups || []).map(g => ({
+        user_groups: {
+            id: 'mock-group-id', // Placeholder
+            name: g
+        }
+    }))
 } : null
 
 // -- MOCK AUTH STATE MANAGEMENT --

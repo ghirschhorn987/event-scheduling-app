@@ -19,10 +19,10 @@ export default function Dashboard({ session }) {
                 setLoading(true)
 
                 // 1. Get User Profile
-                // We select user_groups(name) to check membership
+                // We select profile_groups -> user_groups to check membership
                 const { data: profile } = await supabase
                     .from('profiles')
-                    .select('*, user_groups(id, name)')
+                    .select('*, profile_groups(user_groups(id, name))')
                     .eq('id', session.user.id)
                     .single()
 
@@ -138,7 +138,8 @@ export default function Dashboard({ session }) {
     const finalReserveTime = nextEvent ? new Date(nextEvent.final_reserve_scheduling) : null
 
     // Membership check
-    const isMember = userProfile?.user_group_id != null
+    // Check if profile_groups array has any entries
+    const isMember = userProfile?.profile_groups && userProfile.profile_groups.length > 0
 
 
 

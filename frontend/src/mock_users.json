@@ -1,188 +1,67 @@
 [
   {
-    "id": "793db7d3-7996-4669-8714-8340f784085c",
-    "email": "mock.admin@test.com",
-    "name": "Mock Admin",
-    "role": "admin"
+    "id": "4f8ae5f3-f547-430d-8a73-365cd40624ba",
+    "email": "mock.super@test.com",
+    "name": "Mock Super Admin",
+    "groups": [
+      "Super Admin"
+    ]
   },
   {
-    "id": "28a88cfd-866c-42c3-a859-cac2c85a7363",
-    "email": "mock.primary.1@test.com",
-    "name": "Primary 1",
-    "role": "primary"
+    "id": "73fe7ef8-8e74-4f53-8c89-4697094e01db",
+    "email": "mock.user.1@test.com",
+    "name": "Mock User 1",
+    "groups": [
+      "Primary"
+    ]
   },
   {
-    "id": "df391cd4-5fe1-4170-b11d-7a6387743cc8",
-    "email": "mock.primary.2@test.com",
-    "name": "Primary 2",
-    "role": "primary"
+    "id": "bab0de9a-c8c1-4065-80d5-c73d1dc23a74",
+    "email": "mock.user.2@test.com",
+    "name": "Mock User 2",
+    "groups": [
+      "Primary"
+    ]
   },
   {
-    "id": "c02b95b6-0911-4018-89cf-d09f56693ffd",
-    "email": "mock.primary.3@test.com",
-    "name": "Primary 3",
-    "role": "primary"
+    "id": "1f19bbaf-b03a-44ba-b44e-409210f574b6",
+    "email": "mock.user.3@test.com",
+    "name": "Mock User 3",
+    "groups": [
+      "Primary"
+    ]
   },
   {
-    "id": "d91ff800-f51a-4f08-98c2-64b83b690dbe",
-    "email": "mock.primary.4@test.com",
-    "name": "Primary 4",
-    "role": "primary"
+    "id": "ed5e04ab-8b79-4485-9373-f87e77cb291a",
+    "email": "mock.user.4@test.com",
+    "name": "Mock User 4",
+    "groups": [
+      "Primary"
+    ]
   },
   {
-    "id": "243765b4-2aea-415f-b1c0-ba61c56d625b",
-    "email": "mock.primary.5@test.com",
-    "name": "Primary 5",
-    "role": "primary"
+    "id": "c4237e94-0c65-4899-b491-6b6c4c70babe",
+    "email": "mock.user.5@test.com",
+    "name": "Mock User 5",
+    "groups": [
+      "Primary"
+    ]
   },
   {
-    "id": "4df562c1-dba5-4193-968e-c1744a028c61",
-    "email": "mock.primary.6@test.com",
-    "name": "Primary 6",
-    "role": "primary"
+    "id": "6a8750c3-9ffd-4259-9fee-93acd7531fe4",
+    "email": "admin@skeddle.club",
+    "name": "Real Admin",
+    "groups": [
+      "Super Admin"
+    ]
   },
   {
-    "id": "af025088-7f88-4aa3-93c6-eabc6d83d0ec",
-    "email": "mock.primary.7@test.com",
-    "name": "Primary 7",
-    "role": "primary"
-  },
-  {
-    "id": "929b723c-1b63-4f7c-b82b-f64e9d12633e",
-    "email": "mock.primary.8@test.com",
-    "name": "Primary 8",
-    "role": "primary"
-  },
-  {
-    "id": "6d78deb1-0a7c-4fc0-a625-77cc1bd20bd6",
-    "email": "mock.primary.9@test.com",
-    "name": "Primary 9",
-    "role": "primary"
-  },
-  {
-    "id": "e0203a29-c4d6-4554-9241-2994e1d96686",
-    "email": "mock.primary.10@test.com",
-    "name": "Primary 10",
-    "role": "primary"
-  },
-  {
-    "id": "2d3d8bbc-edc4-43de-8a46-cde2007d13ec",
-    "email": "mock.primary.11@test.com",
-    "name": "Primary 11",
-    "role": "primary"
-  },
-  {
-    "id": "368e61d6-fd14-4e75-b9a4-e59e120ea01f",
-    "email": "mock.primary.12@test.com",
-    "name": "Primary 12",
-    "role": "primary"
-  },
-  {
-    "id": "5670f04f-df29-43ea-b08b-cae1da243d7c",
-    "email": "mock.primary.13@test.com",
-    "name": "Primary 13",
-    "role": "primary"
-  },
-  {
-    "id": "ba19ac15-bfba-4930-9a31-50be8dbe2cde",
-    "email": "mock.primary.14@test.com",
-    "name": "Primary 14",
-    "role": "primary"
-  },
-  {
-    "id": "b42dd38d-0e58-4409-b0ce-1de4be13c76f",
-    "email": "mock.primary.15@test.com",
-    "name": "Primary 15",
-    "role": "primary"
-  },
-  {
-    "id": "b2f46cde-2d59-4ff3-b477-beee75986537",
-    "email": "mock.secondary.1@test.com",
-    "name": "Secondary 1",
-    "role": "secondary"
-  },
-  {
-    "id": "64b99422-9f47-464b-b652-499e84e39dcb",
-    "email": "mock.secondary.2@test.com",
-    "name": "Secondary 2",
-    "role": "secondary"
-  },
-  {
-    "id": "3de95226-c641-4cfd-b943-188df519c4cf",
-    "email": "mock.secondary.3@test.com",
-    "name": "Secondary 3",
-    "role": "secondary"
-  },
-  {
-    "id": "a77d074a-7c2e-440a-944f-a8bf5727e7a7",
-    "email": "mock.secondary.4@test.com",
-    "name": "Secondary 4",
-    "role": "secondary"
-  },
-  {
-    "id": "7e15c6b9-ce6a-4efe-a78e-ce261679e4a9",
-    "email": "mock.secondary.5@test.com",
-    "name": "Secondary 5",
-    "role": "secondary"
-  },
-  {
-    "id": "3b50cec3-6ca8-4f94-a07e-eb94913e3ea3",
-    "email": "mock.secondary.6@test.com",
-    "name": "Secondary 6",
-    "role": "secondary"
-  },
-  {
-    "id": "9193c853-a8eb-4f4a-90e7-cae52536f4f2",
-    "email": "mock.secondary.7@test.com",
-    "name": "Secondary 7",
-    "role": "secondary"
-  },
-  {
-    "id": "4fe5dd6e-5f8d-4b69-8d9c-e894f7294ab2",
-    "email": "mock.secondary.8@test.com",
-    "name": "Secondary 8",
-    "role": "secondary"
-  },
-  {
-    "id": "41408f02-1be1-43a1-be1b-07159ae54a42",
-    "email": "mock.secondary.9@test.com",
-    "name": "Secondary 9",
-    "role": "secondary"
-  },
-  {
-    "id": "46b2a1a8-420b-404f-a9b4-f5109d12fa5f",
-    "email": "mock.secondary.10@test.com",
-    "name": "Secondary 10",
-    "role": "secondary"
-  },
-  {
-    "id": "6b782a9c-89ed-4db7-a1bc-71e8e64a92cb",
-    "email": "mock.guest.1@test.com",
-    "name": "Guest 1",
-    "role": "guest"
-  },
-  {
-    "id": "e0f98bd5-221b-4e78-a594-bf4f5b4c23b9",
-    "email": "mock.guest.2@test.com",
-    "name": "Guest 2",
-    "role": "guest"
-  },
-  {
-    "id": "7cba8eed-090b-4352-8fef-bc6499fae2ff",
-    "email": "mock.guest.3@test.com",
-    "name": "Guest 3",
-    "role": "guest"
-  },
-  {
-    "id": "3d63d24d-7c68-410f-86cc-32b40a3b8d32",
-    "email": "mock.guest.4@test.com",
-    "name": "Guest 4",
-    "role": "guest"
-  },
-  {
-    "id": "76404f34-32e5-469e-9e20-9d27a4997b54",
-    "email": "mock.guest.5@test.com",
-    "name": "Guest 5",
-    "role": "guest"
+    "id": "46110853-2e34-471c-9ffa-39c2da0dc3c2",
+    "email": "test2@skeddle.club",
+    "name": "Test User Multi",
+    "groups": [
+      "Primary",
+      "Secondary"
+    ]
   }
 ]

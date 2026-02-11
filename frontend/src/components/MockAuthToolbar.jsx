@@ -8,7 +8,6 @@ const MockAuthToolbar = () => {
     if (!useMock) return null
 
     const [open, setOpen] = useState(false)
-    const [selectedRole, setSelectedRole] = useState('primary')
     const [currentUser, setCurrentUser] = useState(null)
 
     useEffect(() => {
@@ -43,7 +42,7 @@ const MockAuthToolbar = () => {
         window.location.reload()
     }
 
-    const filteredUsers = mockUsers.filter(u => u.role === selectedRole)
+    // const filteredUsers = mockUsers.filter(u => u.role === selectedRole)
 
     return (
         <div style={{
@@ -56,41 +55,31 @@ const MockAuthToolbar = () => {
             borderRadius: '5px',
             zIndex: 9999,
             fontSize: '12px',
-            fontFamily: 'monospace'
+            fontFamily: 'monospace',
+            maxHeight: '400px',
+            display: 'flex',
+            flexDirection: 'column'
         }}>
             <div style={{ marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <strong>🛠 Mock Auth</strong>
-                <button onClick={() => setOpen(!open)} style={{ marginLeft: 'auto' }}>
+                <button onClick={() => setOpen(!open)} style={{ marginLeft: 'auto', cursor: 'pointer' }}>
                     {open ? '▼' : '▲'}
                 </button>
             </div>
 
             {open && (
-                <div>
+                <div style={{ overflowY: 'auto' }}>
                     <div style={{ marginBottom: '10px', borderBottom: '1px solid #555', paddingBottom: '5px' }}>
                         Current: <strong>{currentUser ? currentUser.name : 'Guest (Not Logged In)'}</strong>
                         {currentUser && (
-                            <button onClick={handleLogout} style={{ marginLeft: '10px', color: '#ff6b6b' }}>
+                            <button onClick={handleLogout} style={{ marginLeft: '10px', color: '#ff6b6b', cursor: 'pointer' }}>
                                 Logout
                             </button>
                         )}
                     </div>
 
-                    <div style={{ marginBottom: '5px' }}>
-                        <select
-                            value={selectedRole}
-                            onChange={e => setSelectedRole(e.target.value)}
-                            style={{ width: '100%', marginBottom: '5px', padding: '2px' }}
-                        >
-                            <option value="primary">Primary Users</option>
-                            <option value="secondary">Secondary Users</option>
-                            <option value="guest">Verified Guests</option>
-                            <option value="admin">Admins</option>
-                        </select>
-                    </div>
-
-                    <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                        {filteredUsers.map(user => (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        {mockUsers.map(user => (
                             <button
                                 key={user.id}
                                 onClick={() => handleLogin(user)}
@@ -98,15 +87,23 @@ const MockAuthToolbar = () => {
                                     display: 'block',
                                     width: '100%',
                                     textAlign: 'left',
-                                    padding: '2px 5px',
-                                    marginBottom: '2px',
+                                    padding: '4px 8px',
                                     backgroundColor: currentUser?.id === user.id ? '#4caf50' : '#444',
                                     border: 'none',
                                     color: 'white',
-                                    cursor: 'pointer'
+                                    cursor: 'pointer',
+                                    borderRadius: '3px'
                                 }}
                             >
-                                {user.name} ({user.email})
+                                <div><strong>{user.name}</strong></div>
+                                <div style={{ fontSize: '10px', opacity: 0.8 }}>
+                                    {user.email}
+                                </div>
+                                {user.groups && user.groups.length > 0 && (
+                                    <div style={{ fontSize: '10px', color: '#81c784' }}>
+                                        [{user.groups.join(', ')}]
+                                    </div>
+                                )}
                             </button>
                         ))}
                     </div>
