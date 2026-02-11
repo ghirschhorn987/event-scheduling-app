@@ -108,10 +108,10 @@ const AdminDashboard = ({ session }) => {
 
     if (loading) return <div className="loading-screen">Loading Admin Panel...</div>
     if (error) return (
-        <div className="error-container" style={{ padding: '2rem', textAlign: 'center' }}>
-            <h2 style={{ color: 'red' }}>Error</h2>
-            <p>{error}</p>
-            <Link to="/dashboard" className="primary-btn">Back to Dashboard</Link>
+        <div className="error-container p-8 text-center bg-slate-800 rounded-lg shadow max-w-lg mx-auto mt-10 border border-red-900/50">
+            <h2 className="text-red-500 text-2xl font-bold mb-4">Error</h2>
+            <p className="text-white mb-6">{error}</p>
+            <Link to="/dashboard" className="primary-btn inline-block">Back to Dashboard</Link>
         </div>
     )
 
@@ -126,31 +126,30 @@ const AdminDashboard = ({ session }) => {
                 <h2>Pending Registration Requests</h2>
 
                 {requests.length === 0 ? (
-                    <p>No pending requests.</p>
+                    <p className="text-gray-400">No pending requests.</p>
                 ) : (
-                    <div className="requests-list">
+                    <div className="space-y-4">
                         {requests.map(req => (
-                            <div key={req.id} className="request-card" style={{
-                                border: '1px solid #ddd', padding: '1rem', marginBottom: '1rem',
-                                borderRadius: '8px', backgroundColor: '#fff'
-                            }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '1rem' }}>
-                                    <div style={{ flex: 1, minWidth: '300px' }}>
-                                        <h3>{req.full_name}</h3>
-                                        <p><strong>Email:</strong> {req.email}</p>
-                                        <p><strong>Affiliation:</strong> {req.affiliation}</p>
-                                        {req.referral && <p><strong>Referral:</strong> {req.referral}</p>}
-                                        <p><strong>Status:</strong> <span className={`status-${req.status.toLowerCase()}`}>{req.status}</span></p>
-                                        <p style={{ fontSize: '0.8rem', color: '#666' }}>Requested: {new Date(req.created_at).toLocaleString()}</p>
-                                        {req.admin_notes && <p style={{ fontSize: '0.9rem', color: '#555', marginTop: '5px' }}><em>Note: {req.admin_notes}</em></p>}
+                            <div key={req.id} className="bg-slate-800 p-4 rounded shadow border border-slate-700">
+                                <div className="flex flex-wrap gap-4 justify-between items-start">
+                                    <div className="flex-1 min-w-[300px]">
+                                        <h3 className="text-xl font-bold text-white mb-2">{req.full_name}</h3>
+                                        <p className="text-gray-300"><strong>Email:</strong> {req.email}</p>
+                                        <p className="text-gray-300"><strong>Affiliation:</strong> {req.affiliation}</p>
+                                        {req.referral && <p className="text-gray-300"><strong>Referral:</strong> {req.referral}</p>}
+                                        <p className="text-gray-300 mb-1">
+                                            <strong>Status:</strong> <span className={`status-${req.status.toLowerCase()} ml-2 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-yellow-900 text-yellow-200`}>{req.status}</span>
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-2">Requested: {new Date(req.created_at).toLocaleString()}</p>
+                                        {req.admin_notes && <p className="text-sm text-gray-400 mt-1"><em>Note: {req.admin_notes}</em></p>}
                                     </div>
 
                                     {req.status === 'PENDING' && (
-                                        <div className="actions" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '200px' }}>
+                                        <div className="flex flex-col gap-2 min-w-[200px]">
 
                                             {/* Approve Section */}
-                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                                <select id={`role-${req.id}`} style={{ padding: '5px' }} defaultValue="">
+                                            <div className="flex gap-2 items-center">
+                                                <select id={`role-${req.id}`} className="bg-slate-900 border border-slate-700 text-white p-2 rounded text-sm w-full">
                                                     <option value="" disabled>Select Group</option>
                                                     {userGroups.map(g => (
                                                         <option key={g.id} value={g.name}>{g.name}</option>
@@ -164,37 +163,35 @@ const AdminDashboard = ({ session }) => {
                                                         handleAction(req.id, 'APPROVED', role)
                                                     }}
                                                     disabled={processing === req.id}
-                                                    className="primary-btn"
-                                                    style={{ fontSize: '0.8rem', padding: '5px 10px' }}
+                                                    className="bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 disabled:opacity-50 text-sm font-semibold"
                                                 >
                                                     Approve
                                                 </button>
                                             </div>
 
                                             {/* Other Actions */}
-                                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                            <div className="flex gap-2 mt-2">
                                                 <button
                                                     onClick={() => openModal(req, 'INFO')}
                                                     disabled={processing === req.id}
-                                                    className="secondary-btn"
-                                                    style={{ fontSize: '0.8rem', padding: '5px 10px' }}
+                                                    className="secondary-btn text-xs px-3 py-1.5"
                                                 >
                                                     Request Info
                                                 </button>
                                             </div>
 
-                                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
+                                            <div className="flex gap-2 mt-1">
                                                 <button
                                                     onClick={() => handleAction(req.id, 'DECLINED_SILENT')}
                                                     disabled={processing === req.id}
-                                                    style={{ backgroundColor: '#ff6b6b', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                                    className="bg-red-900/50 text-red-300 border border-red-800 hover:bg-red-900 px-3 py-1.5 rounded text-xs"
                                                 >
                                                     Decline (Silent)
                                                 </button>
                                                 <button
                                                     onClick={() => openModal(req, 'DECLINE')}
                                                     disabled={processing === req.id}
-                                                    style={{ backgroundColor: '#e03131', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                                    className="bg-red-600 text-white hover:bg-red-700 px-3 py-1.5 rounded text-xs"
                                                 >
                                                     Decline (Msg)
                                                 </button>
@@ -210,15 +207,12 @@ const AdminDashboard = ({ session }) => {
 
             {/* Modal */}
             {modalOpen && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
-                }}>
-                    <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '8px', width: '90%', maxWidth: '500px' }}>
-                        <h3>
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+                    <div className="bg-slate-800 p-8 rounded-lg w-[90%] max-w-[500px] border border-slate-700">
+                        <h3 className="text-xl font-bold mb-4 text-white">
                             {modalType === 'DECLINE' ? 'Decline Request' : 'Request More Info'}
                         </h3>
-                        <p style={{ marginBottom: '1rem' }}>
+                        <p className="mb-4 text-gray-300">
                             {modalType === 'DECLINE'
                                 ? `Send a reason to ${selectedRequest?.full_name} for declining.`
                                 : `Ask ${selectedRequest?.full_name} for more details.`}
@@ -227,10 +221,10 @@ const AdminDashboard = ({ session }) => {
                             value={modalMessage}
                             onChange={(e) => setModalMessage(e.target.value)}
                             rows={5}
-                            style={{ width: '100%', marginBottom: '1rem', padding: '10px' }}
+                            className="w-full mb-4 p-3 bg-slate-900 border border-slate-700 rounded text-white focus:border-blue-500 outline-none"
                             placeholder="Enter your message here..."
                         />
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                        <div className="flex justify-end gap-4">
                             <button onClick={closeModal} className="secondary-btn">Cancel</button>
                             <button onClick={submitModal} className="primary-btn">Send</button>
                         </div>
