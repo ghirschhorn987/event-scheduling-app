@@ -76,12 +76,20 @@ async def get_current_admin(request: Request):
     if user.email == "mock.admin@test.com" or user.id == "793db7d3-7996-4669-8714-8340f784085c":
         return user
         
-    # Real Check: Fetch Profile -> Group
-    res = supabase.table("profiles").select("*, user_groups(name)").eq("id", user.id).single().execute()
-    if res.data:
-        group = res.data.get("user_groups")
-        if group and group.get("name") == "Admin":
-            return user
+    # Real Check: Fetch Profile -> Groups
+    # New Schema: profiles -> profile_groups -> user_groups
+    res = supabase.table("profiles").select("*, profile_groups(user_groups(name))").eq("id", user.id).single().execute()
+    
+    is_admin = False
+    if res.data and res.data.get("profile_groups"):
+        # profile_groups is a list of objects: [{'user_groups': {'name': 'Admin'}}, ...]
+        for pg in res.data["profile_groups"]:
+            if pg.get("user_groups") and pg["user_groups"].get("name") in ["Super Admin", "Admin"]:
+                is_admin = True
+                break
+    
+    if is_admin:
+        return user
             
     # If not found
     raise HTTPException(status_code=403, detail="Admin privileges required")
@@ -261,8 +269,10 @@ async def signup(body: SignupRequest, request: Request):
         raise HTTPException(status_code=400, detail="User already signed up")
 
     try:
-        # Use maybe_single() or just execute() and check list to avoid crash on empty
-        profile_res = supabase.table("profiles").select("*, user_groups(id)").eq("id", user_id).execute()
+        # Fetch profile with groups (via join table)
+        profile_res = supabase.table("profiles").select("*, profile_groups(user_groups(name))").eq("id", user_id).execute()
+        
+        profile = None
         if not profile_res.data:
             # Attempt to create profile if missing (Self-healing)
             print(f"Profile not found for {user_id}. Attempting to create with Service Role...")
@@ -272,16 +282,20 @@ async def signup(body: SignupRequest, request: Request):
                 
                 # If we have email/metadata from the auth token, we could populate it here!
                 if auth_user.email:
-                    new_profile["email"] = auth_user.email
-                    # Attempt to get name from metadata
-                    meta = auth_user.user_metadata or {}
-                    if "full_name" in meta:
-                        new_profile["name"] = meta["full_name"]
+                    # NOTE: We removed 'email' from profiles table in refactor!
+                    # So we only set what's available and valid.
+                    # Name is still valid.
+                    pass
+                
+                # Attempt to get name from metadata
+                meta = auth_user.user_metadata or {}
+                if "full_name" in meta:
+                    new_profile["name"] = meta["full_name"]
                 
                 create_res = supabase.table("profiles").insert(new_profile).execute()
                 profile = create_res.data[0]
-                # Refetch with groups (will be null/guest initially)
-                profile["user_groups"] = None 
+                # Refetch with groups (will be empty)
+                profile["profile_groups"] = []
                 print(f"Successfully auto-created profile for {user_id}")
             except Exception as create_e:
                 print(f"Failed to auto-create profile: {create_e}")
@@ -292,13 +306,26 @@ async def signup(body: SignupRequest, request: Request):
                 raise HTTPException(status_code=400, detail="User profile not found and could not be created. Please contact support.")
         else:
             profile = profile_res.data[0]
+            
     except Exception as e:
         print(f"Error fetching/creating profile: {e}")
         if isinstance(e, HTTPException): raise e
         raise HTTPException(status_code=500, detail=f"Database error checking profile: {str(e)}")
 
-    is_member = profile.get("user_groups") is not None
+    # Flatten groups
+    user_groups = []
+    if profile.get("profile_groups"):
+        for pg in profile["profile_groups"]:
+            if pg.get("user_groups"):
+                user_groups.append(pg["user_groups"]["name"])
+
+    # Determine Access
+    is_member = len(user_groups) > 0
     
+    if not is_member:
+        # If user has NO groups, they cannot sign up.
+        raise HTTPException(status_code=403, detail="Only approved members can sign up for events.")
+
     # 2. Logic
     now = get_now()
     
@@ -321,25 +348,18 @@ async def signup(body: SignupRequest, request: Request):
     
     current_roster_count = fetch_counts(body.event_id)
 
-    if is_member:
-        # Members Logic
-        if now < roster_open:
-             raise HTTPException(status_code=400, detail="Roster signup not yet open")
-        
-        if current_roster_count < max_signups:
-            target_list = "EVENT"
-            target_list_count = fetch_counts(body.event_id)
-            sequence = target_list_count + 1
-        else:
-            target_list = "WAITLIST"
-            wl_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST").execute()
-            sequence = wl_res.count + 1
-
+    # Members Logic
+    if now < roster_open:
+         raise HTTPException(status_code=400, detail="Roster signup not yet open")
+    
+    if current_roster_count < max_signups:
+        target_list = "EVENT"
+        target_list_count = fetch_counts(body.event_id)
+        sequence = target_list_count + 1
     else:
-        # Non-Member / Guest Logic - RESTRICTED
-        # User requested no Guest access. 
-        # If they are not in a group, they cannot sign up.
-        raise HTTPException(status_code=403, detail="Only approved members can sign up for events.")
+        target_list = "WAITLIST"
+        wl_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST").execute()
+        sequence = wl_res.count + 1
 
     # 3. Execute Insert
     payload = {
