@@ -23,7 +23,7 @@ export default function Dashboard({ session }) {
                 const { data: profile } = await supabase
                     .from('profiles')
                     .select('*, profile_groups(user_groups(id, name))')
-                    .eq('id', session.user.id)
+                    .eq('auth_user_id', session.user.id)
                     .single()
 
                 setUserProfile(profile)

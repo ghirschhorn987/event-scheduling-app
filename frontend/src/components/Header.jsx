@@ -6,6 +6,7 @@ export default function Header({ session }) {
     const navigate = useNavigate()
     const location = useLocation()
     const [userName, setUserName] = useState('')
+    const [isAdmin, setIsAdmin] = useState(false)
 
     useEffect(() => {
         if (session?.user) {
@@ -15,27 +16,30 @@ export default function Header({ session }) {
 
     const fetchUserProfile = async (user) => {
         try {
-            // Check for mock user first to avoid unnecessary DB calls if using mock
-            if (user.email === "mock.user.1@test.com" || user.user_metadata?.name) {
-                // Use metadata if available or mock defaults, but real app uses profiles
-                // Let's prefer fetching from profiles for consistency
-            }
-
             const { data, error } = await supabase
                 .from('profiles')
-                .select('name')
-                .eq('id', user.id)
+                .select('name, profile_groups(user_groups(name))')
+                .eq('auth_user_id', user.id)
                 .single()
 
-            if (data?.name) {
-                setUserName(data.name)
+            if (data) {
+                setUserName(data.name || user.email)
+
+                // Check for admin/superadmin roles
+                const groups = data.profile_groups || []
+                const isUserAdmin = groups.some(pg =>
+                    ["Super Admin", "SuperAdmin", "Admin"].includes(pg.user_groups?.name)
+                )
+                setIsAdmin(isUserAdmin)
             } else {
-                // Fallback to metadata or email
+                // Fallback to metadata
                 setUserName(user.user_metadata?.name || user.email)
+                setIsAdmin(false)
             }
         } catch (e) {
             console.error("Header profile check failed", e)
             setUserName(user.email)
+            setIsAdmin(false)
         }
     }
 
@@ -46,15 +50,27 @@ export default function Header({ session }) {
     return (
         <header className="bg-slate-800 shadow mb-2">
             <div className="w-full px-8 py-3 flex justify-between items-center">
-                <div className="flex items-center">
+                <div className="flex items-center gap-8">
                     {location.pathname === '/events' ? (
                         <span className="text-xl font-bold text-gray-400 cursor-default select-none">
                             Events
                         </span>
                     ) : (
-                        <Link to="/events" className="text-xl font-bold text-white hover:text-blue-400">
+                        <Link to="/events" className="text-xl font-bold text-white hover:text-blue-400 transition-colors">
                             Events
                         </Link>
+                    )}
+
+                    {isAdmin && (
+                        location.pathname === '/admin' ? (
+                            <span className="text-xl font-bold text-gray-400 cursor-default select-none">
+                                Admin
+                            </span>
+                        ) : (
+                            <Link to="/admin" className="text-xl font-bold text-white hover:text-blue-400 transition-colors">
+                                Admin
+                            </Link>
+                        )
                     )}
                 </div>
 
