@@ -246,12 +246,12 @@ export default function Dashboard({ session }) {
                     </div>
                 ) : (
                     <>
-                        <header className="mb-6 flex justify-between items-center">
-                            <div>
-                                <h2 className="text-3xl font-bold">{nextEvent.name}</h2>
-                                <p className="text-gray-600">{safeDate(nextEvent.event_date)}</p>
+                        <header className="mb-4 flex flex-col md:flex-row md:items-baseline md:justify-between border-b pb-2 border-slate-700">
+                            <div className="flex flex-col md:flex-row md:items-baseline md:gap-4">
+                                <h2 className="text-2xl font-bold">{nextEvent.name}</h2>
+                                <p className="text-gray-400 text-sm md:text-base">{safeDate(nextEvent.event_date)}</p>
                             </div>
-                            <button className="secondary-btn bg-gray-200 px-4 py-2 rounded" onClick={() => supabase.auth.signOut()}>Sign Out</button>
+                            {/* Sign Out button removed as it is in the main Header */}
                         </header>
 
                         {isCanceled && (
@@ -260,41 +260,45 @@ export default function Dashboard({ session }) {
                             </div>
                         )}
 
-                        {/* Status Bar */}
-                        <div className="bg-slate-800 p-4 rounded shadow mb-6">
-                            <h3 className="font-semibold mb-2">Event Status</h3>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>Roster: {eventList.length} / {nextEvent.max_signups}</div>
-                                <div>Waitlist: {waitList.length}</div>
-                                <div>Holding: {holdingList.length}</div>
-                            </div>
-                        </div>
+                        {/* Combined Status & Actions Compact Card */}
+                        <div className="bg-slate-800 p-4 rounded shadow mb-6 border border-slate-700 flex flex-col md:flex-row items-center justify-between gap-4">
 
-                        {/* User Status / Actions */}
-                        <div className="bg-slate-800 p-6 rounded shadow mb-6">
-                            {userSignup ? (
-                                <div className="text-center">
-                                    <p className="text-lg mb-4">You are: <strong>{userSignup.list_type.replace('_', ' ')}</strong> #{userSignup.sequence_number > 0 ? userSignup.sequence_number : '-'}</p>
-                                    <button onClick={handleDelete} className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600">
-                                        Leave Event
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="text-center">
-                                    {!isRosterOpen && !isMember ? (
-                                        <div>
-                                            <p className="mb-2">Signup opens: {safeDate(rosterOpenTime)}</p>
-                                            <button disabled className="bg-gray-300 text-gray-500 px-6 py-2 rounded cursor-not-allowed">
-                                                Not Open Yet
-                                            </button>
+                            {/* Counts */}
+                            <div className="flex gap-4 text-sm font-medium">
+                                <div className="bg-slate-700 px-3 py-1 rounded">Roster: <span className="text-white">{eventList.length}</span></div>
+                                <div className="bg-slate-700 px-3 py-1 rounded">Waitlist: <span className="text-white">{waitList.length}</span></div>
+                                <div className="bg-slate-700 px-3 py-1 rounded">Holding: <span className="text-white">{holdingList.length}</span></div>
+                            </div>
+
+                            {/* User Status & Action */}
+                            <div className="flex items-center gap-4">
+                                {userSignup ? (
+                                    <>
+                                        <div className="text-sm text-gray-300">
+                                            You are: <strong className="text-white">{userSignup.list_type.replace('_', ' ')}</strong>
+                                            {userSignup.sequence_number > 0 && <span className="ml-1">#{userSignup.sequence_number}</span>}
                                         </div>
-                                    ) : (
-                                        <button onClick={handleJoin} className="bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700">
-                                            Sign Up Now
+                                        <button onClick={handleDelete} className="bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1.5 rounded text-sm hover:bg-red-500 hover:text-white transition-colors">
+                                            Leave
                                         </button>
-                                    )}
-                                </div>
-                            )}
+                                    </>
+                                ) : (
+                                    <>
+                                        {!isRosterOpen && !isMember ? (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-gray-400">Opens {safeDate(rosterOpenTime)}</span>
+                                                <button disabled className="bg-slate-700 text-gray-500 px-4 py-1.5 rounded text-sm cursor-not-allowed">
+                                                    Not Open
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button onClick={handleJoin} className="primary-btn py-1.5 px-6 text-sm">
+                                                Sign Up
+                                            </button>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         </div>
 
                         {/* Lists Display */}

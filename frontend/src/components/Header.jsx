@@ -5,85 +5,64 @@ import { useEffect, useState } from 'react'
 export default function Header({ session }) {
     const navigate = useNavigate()
     const location = useLocation()
-    const [isAdmin, setIsAdmin] = useState(false)
+    const [userName, setUserName] = useState('')
 
     useEffect(() => {
         if (session?.user) {
-            checkAdminForHeader(session.user)
+            fetchUserProfile(session.user)
         }
     }, [session])
 
-    const checkAdminForHeader = async (user) => {
-        // Simple check similar to backend logic or based on mock data
-        // For efficiency, we might want to store this in session or context, but fetching here is fine for now.
-
-        // 1. Mock Admin Check
-        if (user.email === "mock.admin@test.com" || user.id === "793db7d3-7996-4669-8714-8340f784085c") {
-            setIsAdmin(true)
-            return
-        }
-
-        // 2. Real DB Check
+    const fetchUserProfile = async (user) => {
         try {
+            // Check for mock user first to avoid unnecessary DB calls if using mock
+            if (user.email === "mock.user.1@test.com" || user.user_metadata?.name) {
+                // Use metadata if available or mock defaults, but real app uses profiles
+                // Let's prefer fetching from profiles for consistency
+            }
+
             const { data, error } = await supabase
                 .from('profiles')
-                .select('user_groups(name)')
+                .select('name')
                 .eq('id', user.id)
                 .single()
 
-            if (data?.user_groups?.name === 'Admin') {
-                setIsAdmin(true)
+            if (data?.name) {
+                setUserName(data.name)
+            } else {
+                // Fallback to metadata or email
+                setUserName(user.user_metadata?.name || user.email)
             }
         } catch (e) {
-            console.error("Header admin check failed", e)
+            console.error("Header profile check failed", e)
+            setUserName(user.email)
         }
     }
 
     const handleSignOut = async () => {
         await supabase.auth.signOut()
-        // If on a protected page, App.jsx might redirect, or we can force it
-        // navigate('/login') // Let auth state change handle it
     }
 
     return (
-        <header className="bg-slate-800 shadow mb-6">
-            <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-                <div className="flex items-center gap-6">
-                    <Link to="/events" className="text-xl font-bold text-white hover:text-blue-400 whitespace-nowrap">
-                        Event Scheduler
-                    </Link>
-
-                    <nav className="hidden md:flex gap-4 text-sm font-medium items-center">
-                        <Link
-                            to="/events"
-                            className={`whitespace-nowrap hover:text-blue-400 ${location.pathname === '/events' ? 'text-blue-400' : 'text-gray-300'}`}
-                        >
+        <header className="bg-slate-800 shadow mb-2">
+            <div className="w-full px-8 py-3 flex justify-between items-center">
+                <div className="flex items-center">
+                    {location.pathname === '/events' ? (
+                        <span className="text-xl font-bold text-gray-400 cursor-default select-none">
+                            Events
+                        </span>
+                    ) : (
+                        <Link to="/events" className="text-xl font-bold text-white hover:text-blue-400">
                             Events
                         </Link>
-                        {session && (
-                            <Link
-                                to="/dashboard"
-                                className={`whitespace-nowrap hover:text-blue-400 ${location.pathname === '/dashboard' ? 'text-blue-400' : 'text-gray-300'}`}
-                            >
-                                Dashboard
-                            </Link>
-                        )}
-                        {isAdmin && (
-                            <Link
-                                to="/admin"
-                                className={`whitespace-nowrap text-purple-400 hover:text-purple-300 ${location.pathname === '/admin' ? 'font-bold' : ''}`}
-                            >
-                                Admin Dashboard
-                            </Link>
-                        )}
-                    </nav>
+                    )}
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-8">
                     {session ? (
-                        <div className="flex items-center gap-4">
-                            <span className="text-sm text-gray-300 hidden sm:inline whitespace-nowrap">
-                                {session.user.email}
+                        <>
+                            <span className="text-sm text-gray-300 whitespace-nowrap">
+                                {userName || session.user.email}
                             </span>
                             <button
                                 onClick={handleSignOut}
@@ -91,7 +70,7 @@ export default function Header({ session }) {
                             >
                                 Sign Out
                             </button>
-                        </div>
+                        </>
                     ) : (
                         <Link to="/login" className="text-sm text-blue-400 hover:underline whitespace-nowrap">
                             Log In
