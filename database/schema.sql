@@ -33,7 +33,10 @@ CREATE TABLE event_types (
   roster_sign_up_open_minutes INTEGER NOT NULL DEFAULT 4320, -- 3 days
   reserve_sign_up_open_minutes INTEGER NOT NULL DEFAULT 720, -- 12 hours
   initial_reserve_scheduling_minutes INTEGER NOT NULL DEFAULT 420, -- 7 hours
-  final_reserve_scheduling_minutes INTEGER NOT NULL DEFAULT 180 -- 3 hours
+  final_reserve_scheduling_minutes INTEGER NOT NULL DEFAULT 180, -- 3 hours
+  roster_user_group UUID REFERENCES user_groups(id),
+  reserve_first_priority_user_group UUID REFERENCES user_groups(id),
+  reserve_second_priority_user_group UUID REFERENCES user_groups(id)
 );
 
 ALTER TABLE event_types ENABLE ROW LEVEL SECURITY;

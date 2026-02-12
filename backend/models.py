@@ -22,6 +22,9 @@ class EventType(BaseModel):
     reserve_sign_up_open_minutes: int
     initial_reserve_scheduling_minutes: int
     final_reserve_scheduling_minutes: int
+    roster_user_group: Optional[str] = None
+    reserve_first_priority_user_group: Optional[str] = None
+    reserve_second_priority_user_group: Optional[str] = None
 
 class Event(BaseModel):
     id: str

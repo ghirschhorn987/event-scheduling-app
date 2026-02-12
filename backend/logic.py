@@ -23,6 +23,11 @@ def enrich_event(event_data):
     event_data["name"] = event_type["name"]
     event_data["max_signups"] = event_type["max_signups"]
     
+    # Group permissions
+    event_data["roster_user_group"] = event_type.get("roster_user_group")
+    event_data["reserve_first_priority_user_group"] = event_type.get("reserve_first_priority_user_group")
+    event_data["reserve_second_priority_user_group"] = event_type.get("reserve_second_priority_user_group")
+    
     # Calculate timestamps
     # Timedeltas in minutes
     event_data["roster_sign_up_open"] = event_date - timedelta(minutes=event_type["roster_sign_up_open_minutes"])
