@@ -54,7 +54,15 @@ def check_schema():
             print("   ✅ 'user_group_id' column removed (as expected)")
         else:
             print(f"   ? Unable to verify: {e}")
-    
+
+    # Check 5: Check if event_signups has tier column
+    print("\n5. Checking event_signups table for 'tier' column...")
+    try:
+        res = supabase.table('event_signups').select('tier').limit(1).execute()
+        print("   ✅ 'tier' column EXISTS in event_signups table")
+    except Exception as e:
+        print(f"   ❌ 'tier' column MISSING in event_signups table")
+        print(f"   Error: {e}")    
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)

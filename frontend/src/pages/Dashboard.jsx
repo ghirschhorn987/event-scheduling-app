@@ -62,6 +62,11 @@ export default function Dashboard({ session }) {
                     event.name = event.event_types.name
                     event.max_signups = event.event_types.max_signups
 
+                    // Map Group IDs
+                    event.roster_user_group = event.event_types.roster_user_group
+                    event.reserve_first_priority_user_group = event.event_types.reserve_first_priority_user_group
+                    event.reserve_second_priority_user_group = event.event_types.reserve_second_priority_user_group
+
                     // Parse Date
                     const eventDate = new Date(event.event_date) // This is potentially UTC
 
@@ -122,6 +127,25 @@ export default function Dashboard({ session }) {
 
     const now = new Date()
 
+    // 1. Determine User Tier for this Event
+    let tier = null
+    const userGroupIds = userProfile?.profile_groups?.map(g => g.user_groups?.id) || []
+
+    if (nextEvent) {
+        if (nextEvent.roster_user_group && userGroupIds.includes(nextEvent.roster_user_group)) {
+            tier = 1
+        } else if (nextEvent.reserve_first_priority_user_group && userGroupIds.includes(nextEvent.reserve_first_priority_user_group)) {
+            tier = 2
+        } else if (nextEvent.reserve_second_priority_user_group && userGroupIds.includes(nextEvent.reserve_second_priority_user_group)) {
+            tier = 3
+        }
+    }
+
+    // 2. Determine Timings & Windows
+    const rosterOpenTime = nextEvent ? new Date(nextEvent.roster_sign_up_open) : null
+    const reserveOpenTime = nextEvent ? new Date(nextEvent.reserve_sign_up_open) : null
+    const finalReserveTime = nextEvent ? new Date(nextEvent.final_reserve_scheduling) : null
+
     // Lists
     const eventList = signups.filter(s => s.list_type === 'EVENT')
     const waitList = signups.filter(s => s.list_type === 'WAITLIST')
@@ -130,22 +154,54 @@ export default function Dashboard({ session }) {
     // Helper to check if user is in a list
     const userSignup = signups.find(s => s.user_id === userProfile?.id)
 
-    // Timings
-    const rosterOpenTime = nextEvent ? new Date(nextEvent.roster_sign_up_open) : null
-    const waitlistOpenTime = nextEvent ? new Date(nextEvent.waitlist_sign_up_open) : null
-    const reserveOpenTime = nextEvent ? new Date(nextEvent.reserve_sign_up_open) : null
-    const initialReserveTime = nextEvent ? new Date(nextEvent.initial_reserve_scheduling) : null
-    const finalReserveTime = nextEvent ? new Date(nextEvent.final_reserve_scheduling) : null
+    // 3. Determine Eligibility & Action State
+    let canJoin = false
+    let actionLabel = "Sign Up"
+    let actionDisabled = false
+    let disabledReason = null
+    let targetList = "EVENT" // default
 
-    // Membership check
-    // Check if profile_groups array has any entries
-    const isMember = userProfile?.profile_groups && userProfile.profile_groups.length > 0
+    if (nextEvent && !userSignup) {
+        if (!tier) {
+            actionDisabled = true
+            disabledReason = "Not eligible for this event"
+        } else {
+            // Tier 1
+            if (tier === 1) {
+                if (now >= rosterOpenTime) {
+                    canJoin = true
+                } else {
+                    actionDisabled = true
+                    disabledReason = `Opens ${safeDate(rosterOpenTime)}`
+                }
+            }
+            // Tier 2 & 3
+            else {
+                if (now < reserveOpenTime) {
+                    actionDisabled = true
+                    disabledReason = `Opens ${safeDate(reserveOpenTime)}`
+                } else if (now < finalReserveTime) {
+                    // Holding Period
+                    canJoin = true
+                    actionLabel = "Join Holding List"
+                    targetList = "WAITLIST_HOLDING"
+                } else {
+                    // Open Access
+                    canJoin = true
+                }
+            }
+        }
+    } else if (userSignup) {
+        // Already signed up, can't join again
+        canJoin = false
+    }
 
-
-
-    // Render Conditions
-    const isRosterOpen = rosterOpenTime && now >= rosterOpenTime
     const isCanceled = nextEvent?.status === 'CANCELLED'
+    if (isCanceled) {
+        canJoin = false
+        actionDisabled = true
+        disabledReason = "Event Cancelled"
+    }
 
     // Actions
     const handleJoin = async () => {
@@ -284,16 +340,16 @@ export default function Dashboard({ session }) {
                                     </>
                                 ) : (
                                     <>
-                                        {!isRosterOpen && !isMember ? (
+                                        {actionDisabled ? (
                                             <div className="flex items-center gap-2">
-                                                <span className="text-xs text-gray-400">Opens {safeDate(rosterOpenTime)}</span>
+                                                {disabledReason && <span className="text-xs text-gray-400">{disabledReason}</span>}
                                                 <button disabled className="bg-slate-700 text-gray-500 px-4 py-1.5 rounded text-sm cursor-not-allowed">
-                                                    Not Open
+                                                    {actionLabel}
                                                 </button>
                                             </div>
                                         ) : (
                                             <button onClick={handleJoin} className="primary-btn py-1.5 px-6 text-sm">
-                                                Sign Up
+                                                {actionLabel}
                                             </button>
                                         )}
                                     </>

@@ -6,15 +6,22 @@ CREATE TYPE list_type AS ENUM ('EVENT', 'WAITLIST', 'WAITLIST_HOLDING');
 CREATE TABLE user_groups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL UNIQUE,
-  description TEXT
+  description TEXT,
+  google_group_id TEXT
 );
 
 -- Profiles (Public user data linked to auth.users)
 CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  auth_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT,
-  email TEXT,
-  user_group_id UUID REFERENCES user_groups(id)
+  email TEXT
+);
+
+CREATE TABLE profile_groups (
+  profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  group_id UUID REFERENCES user_groups(id) ON DELETE CASCADE,
+  PRIMARY KEY (profile_id, group_id)
 );
 
 -- Turn on Row Level Security
@@ -58,6 +65,7 @@ CREATE TABLE event_signups (
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   list_type list_type NOT NULL,
   sequence_number INTEGER,
+  tier INTEGER,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   UNIQUE(event_id, user_id)
 );
