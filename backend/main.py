@@ -675,11 +675,24 @@ async def get_events(request: Request):
 
 
 @app.post("/api/schedule")
-async def trigger_schedule():
+async def trigger_schedule(request: Request):
     """
     Auto-schedule guests from Holding Area -> Event/Waitlist
     Run this periodically or trigger manually.
     """
+    # Security Check
+    expected_secret = os.environ.get("CRON_SECRET")
+    if not expected_secret:
+        print("WARNING: CRON_SECRET not set in environment. Endpoint is insecure.")
+    
+    # Check header
+    # Cloud Scheduler sends these headers
+    cron_header = request.headers.get("X-Cron-Secret")
+    
+    if expected_secret and cron_header != expected_secret:
+        print(f"Unauthorized schedule attempt. Header: {cron_header}")
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     now = get_now()
     now_iso = now.isoformat()
     
