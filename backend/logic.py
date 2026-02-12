@@ -40,29 +40,125 @@ def enrich_event(event_data):
 
     return event_data
 
-def process_holding_queue(holding_users):
+
+def check_signup_eligibility(event, user_groups, now):
+    """
+    Determines if a user can sign up for an event and which list they should join.
+    
+    Args:
+        event (dict): Enriched event object
+        user_groups (list): List of group names or IDs the user belongs to
+        now (datetime): Current timestamp
+        
+    Returns:
+        dict: {
+            "allowed": bool,
+            "tier": int (1, 2, or 3),
+            "target_list": str ("EVENT", "WAITLIST", "WAITLIST_HOLDING"),
+            "error_message": str (optional)
+        }
+    """
+    # 1. Determine Tier
+    tier = None
+    
+    # Check Tier 1 (Roster)
+    if event.get("roster_user_group") and event["roster_user_group"] in user_groups:
+        tier = 1
+    # Check Tier 2 (First Priority)
+    elif event.get("reserve_first_priority_user_group") and event["reserve_first_priority_user_group"] in user_groups:
+        tier = 2
+    # Check Tier 3 (Second Priority)
+    elif event.get("reserve_second_priority_user_group") and event["reserve_second_priority_user_group"] in user_groups:
+        tier = 3
+        
+    if not tier:
+        return {"allowed": False, "error_message": "No valid membership for this event"}
+
+    # 2. Check Windows based on Tier
+    
+    # Parse times if strings
+    def to_dt(val):
+        if not val: return None
+        if isinstance(val, datetime): return val
+        return datetime.fromisoformat(str(val).replace('Z', '+00:00'))
+
+    roster_open = to_dt(event.get("roster_sign_up_open"))
+    reserve_open = to_dt(event.get("reserve_sign_up_open"))
+    final_scheduling = to_dt(event.get("final_reserve_scheduling"))
+    
+    # Tier 1 Logic
+    if tier == 1:
+        if now >= roster_open:
+            return {"allowed": True, "tier": 1, "target_list": "EVENT"}
+        else:
+            return {"allowed": False, "error_message": f"Not yet open for Roster members. Opens at {roster_open}"}
+            
+    # Tier 2 & 3 Logic
+    if tier in [2, 3]:
+        # If Reserve window hasn't opened yet
+        if now < reserve_open:
+             return {"allowed": False, "error_message": f"Not yet open for Reserve members. Opens at {reserve_open}"}
+        
+        # If inside Reserve Window but BEFORE Final Scheduling -> HOLDING
+        if now < final_scheduling:
+            return {"allowed": True, "tier": tier, "target_list": "WAITLIST_HOLDING"}
+            
+        # If AFTER Final Scheduling -> Direct Entry (First come first serve)
+        else:
+             return {"allowed": True, "tier": tier, "target_list": "EVENT"}
+             
+    return {"allowed": False, "error_message": "Unknown error"}
+
+def process_holding_queue(holding_users, initial_reserve_scheduling_time):
     """
     Sorts a list of holding_users based on the hybrid logic:
-    - Window 1 (seq -1 key missing): Random Shuffle
-    - Window 2 (seq > 0): Sorted by sequence
+    - Early (created_at < initial_scheduling):
+        - Tier 2 Randomized
+        - Tier 3 Randomized
+        - Tier 2 + Tier 3
+    - Late (created_at >= initial_scheduling):
+        - Sorted by created_at
+        
+    Args:
+        holding_users (list): List of user dicts, must include 'tier' and 'created_at'
+        initial_reserve_scheduling_time (datetime): The cutoff time
     
-    Returns a single ordered list of users to promote.
+    Returns:
+        list: Sorted list of users
     """
     if not holding_users:
         return []
+        
+    def to_dt(val):
+        if not val: return datetime.min
+        if isinstance(val, datetime): return val
+        return datetime.fromisoformat(str(val).replace('Z', '+00:00'))
+    
+    initial_time = to_dt(initial_reserve_scheduling_time)
 
-    window1 = [u for u in holding_users if not u.get('sequence_number') or u.get('sequence_number') < 0]
-    window2 = [u for u in holding_users if u.get('sequence_number') and u.get('sequence_number') > 0]
+    early = []
+    late = []
     
-    # Shuffle Window 1
-    # We use a fixed seed for deterministic testing if needed, but here random is fine?
-    # For Unit Tests, we might want to mock random.shuffle.
-    random.shuffle(window1)
+    for u in holding_users:
+        created_at = to_dt(u.get("created_at"))
+        if created_at < initial_time:
+            early.append(u)
+        else:
+            late.append(u)
+            
+    # Sort Early
+    # Group by Tier
+    early_t2 = [u for u in early if u.get("tier") == 2]
+    early_t3 = [u for u in early if u.get("tier") == 3] # Or anything else
     
-    # Sort Window 2
-    window2.sort(key=lambda x: x['sequence_number'])
+    # Randomize
+    random.shuffle(early_t2)
+    random.shuffle(early_t3)
     
-    return window1 + window2
+    # Sort Late by time
+    late.sort(key=lambda x: to_dt(x.get("created_at")))
+    
+    return early_t2 + early_t3 + late
 
 def calculate_promotions(queue, current_roster_count, max_signups, current_waitlist_count):
     """

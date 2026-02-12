@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from db import supabase
 from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate, GroupMemberAction, GroupMembersAction, UserGroupsUpdate
-from logic import enrich_event, process_holding_queue, calculate_promotions
+from logic import enrich_event, process_holding_queue, calculate_promotions, check_signup_eligibility
 
 app = FastAPI()
 
@@ -535,39 +535,49 @@ async def signup(body: SignupRequest, request: Request):
     try:
         now = get_now()
         
-        # Parse event times (assuming ISO strings from DB)
-        def to_dt(val):
-            if isinstance(val, datetime):
-                return val
-            return datetime.fromisoformat(str(val).replace('Z', '+00:00'))
-
-        roster_open = to_dt(event['roster_sign_up_open'])
-        max_signups = event['max_signups']
-
-        target_list = "EVENT"
-        sequence = None
+        # Check Eligibility
+        eligibility = check_signup_eligibility(event, user_groups, now)
         
-        current_roster_count = fetch_counts(body.event_id)
-        print(f"DEBUG: current_roster_count={current_roster_count}, max={max_signups}")
-
-        # Members Logic
-        if now < roster_open:
-             raise HTTPException(status_code=400, detail=f"Roster signup not yet open. Opens at {roster_open}")
+        if not eligibility["allowed"]:
+             raise HTTPException(status_code=400, detail=eligibility["error_message"])
+             
+        target_list = eligibility["target_list"]
         
-        if current_roster_count < max_signups:
-            target_list = "EVENT"
-            sequence = current_roster_count + 1
-        else:
-            target_list = "WAITLIST"
-            wl_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST").execute()
-            sequence = wl_res.count + 1
+        # If target is EVENT, we still need to check if it's full (Overflow to WAITLIST)
+        # But if target is WAITLIST_HOLDING, we just put them there.
+        
+        sequence = 0
+        final_list_type = target_list
+        
+        if target_list == "EVENT":
+            # Check capacity
+            roster_count = fetch_counts(body.event_id)
+            max_signups = event['max_signups']
+            
+            if roster_count < max_signups:
+                final_list_type = "EVENT"
+                sequence = roster_count + 1
+            else:
+                final_list_type = "WAITLIST"
+                # Get waitlist count
+                wl_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST").execute()
+                sequence = (wl_res.count or 0) + 1
+        elif target_list == "WAITLIST_HOLDING":
+            final_list_type = "WAITLIST_HOLDING"
+            # Sequence for holding can heavily rely on created_at, but we can store an incrementing seq too if we want.
+            # logic.py sorts by created_at for window 2. 
+            # Let's just set sequence to 0 or something for now, or use max + 1 if we want to track insertion order explicitly.
+            final_list_type = "WAITLIST_HOLDING"
+            seq_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST_HOLDING").execute()
+            sequence = (seq_res.count or 0) + 1
 
         # 3. Execute Insert
         payload = {
             "event_id": body.event_id,
             "user_id": profile["id"],
-            "list_type": target_list,
-            "sequence_number": sequence
+            "list_type": final_list_type,
+            "sequence_number": sequence,
+            "tier": eligibility.get("tier") # Store tier for sorting later
         }
         
         print(f"DEBUG: Payload for insert: {payload}")
@@ -699,7 +709,9 @@ async def trigger_schedule():
             continue
             
         # 2. Sort Logic (Moved to logic.py)
-        queue = process_holding_queue(holding_users)
+        # We need the initial_reserve_scheduling time
+        initial_scheduling_time = event["initial_reserve_scheduling"]
+        queue = process_holding_queue(holding_users, initial_scheduling_time)
         
         # 3. Promote (Logic moved to logic.py, DB fetch stays here)
         # We need current roster count *right now*
