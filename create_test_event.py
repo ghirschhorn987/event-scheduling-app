@@ -40,6 +40,17 @@ def create_event():
     print("--- Creating Event Types ---")
     created_types = {}
     
+    # Fetch Group IDs
+    print("Fetching Group IDs...")
+    groups_res = supabase.table("user_groups").select("id, name").execute()
+    group_map = {g['name']: g['id'] for g in groups_res.data}
+    
+    first_priority_id = group_map.get("FirstPriority")
+    second_priority_id = group_map.get("SecondPriority")
+    
+    if not first_priority_id or not second_priority_id:
+        print("WARNING: Priority groups not found! Make sure to run migration/seed first.")
+
     for t_data in types_data:
         # Merge with defaults (defaults handled by DB, but we pass what we need)
         payload = {
@@ -53,11 +64,40 @@ def create_event():
         if "initial_reserve_scheduling_minutes" in t_data:
             payload["initial_reserve_scheduling_minutes"] = t_data["initial_reserve_scheduling_minutes"]
             
+        # Add Group Restrictions
+        # 1. Roster Group (Matches name of event type, e.g. "Sunday Basketball" -> "SundayBasketball" group?)
+        # User requested: "roster_user_group point to user_group with name SundayBasketball"
+        # The event type dict uses "Sunday Basketball" (with space).
+        # The group name uses "SundayBasketball" (no space).
+        
+        roster_group_name = t_data["name"].replace(" ", "")
+        roster_group_id = group_map.get(roster_group_name)
+        
+        if roster_group_id:
+            payload["roster_user_group"] = roster_group_id
+        else:
+            print(f"Warning: Roster group '{roster_group_name}' not found for type '{t_data['name']}'")
+            
+        if first_priority_id:
+            payload["reserve_first_priority_user_group"] = first_priority_id
+            
+        if second_priority_id:
+            payload["reserve_second_priority_user_group"] = second_priority_id
+            
         try:
             # Check if exists (by name) to avoid dupes in repeated runs
             existing = supabase.table("event_types").select("*").eq("name", t_data["name"]).execute()
             if existing.data:
-                print(f"Type '{t_data['name']}' already exists. Skipping creation.")
+                print(f"Type '{t_data['name']}' already exists. Updating groups...")
+                # Update existing just in case
+                update_payload = {}
+                if roster_group_id: update_payload["roster_user_group"] = roster_group_id
+                if first_priority_id: update_payload["reserve_first_priority_user_group"] = first_priority_id
+                if second_priority_id: update_payload["reserve_second_priority_user_group"] = second_priority_id
+                
+                if update_payload:
+                    supabase.table("event_types").update(update_payload).eq("id", existing.data[0]["id"]).execute()
+                    
                 created_types[t_data["name"]] = existing.data[0]["id"]
             else:
                 res = supabase.table("event_types").insert(payload).execute()
@@ -66,7 +106,7 @@ def create_event():
                     print(f"Created '{t_data['name']}' with ID: {new_id}")
                     created_types[t_data["name"]] = new_id
         except Exception as e:
-            print(f"Error creating type '{t_data['name']}': {e}")
+            print(f"Error creating/updating type '{t_data['name']}': {e}")
 
     # 2. Create Event Instances (One for each type, next 8 weeks)
     print("\n--- Creating Event Instances (Next 8 Weeks) ---")

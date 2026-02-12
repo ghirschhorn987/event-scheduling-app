@@ -6,9 +6,11 @@ VALUES
   ('FirstPriority', 'Used by certain system functionality to determine order among users (e.g., scheduling) — grants first priority.'),
   ('SecondaryPriority', 'Used by certain system functionality to determine order among users — grants second priority.'),
   ('BethAmAffiliated', 'Notes those users who have an affiliation with Beth Am.'),
+  ('FirstPriority', 'Used by certain system functionality to determine order among users (e.g., scheduling) — grants first priority.'),
+  ('SecondPriority', 'Used by certain system functionality to determine order among users — grants second priority.'),
   ('SundayBasketball', 'contains paid roster of Sunday players'),
   ('TuesdayBasketball', 'contains paid roster of Tuesday players'),
-  ('Thursday Basketball', 'contains paid roster of Thursday players')
+  ('ThursdayBasketball', 'contains paid roster of Thursday players')
 ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description;
 
 -- Insert Event
