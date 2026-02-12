@@ -4,10 +4,8 @@ VALUES
   ('SuperAdmin', 'Has full unrestricted access to all parts of the system.'),
   ('Admin', 'Initially has the same access as SuperAdmin, but this may change in the future.'),
   ('FirstPriority', 'Used by certain system functionality to determine order among users (e.g., scheduling) — grants first priority.'),
-  ('SecondaryPriority', 'Used by certain system functionality to determine order among users — grants second priority.'),
-  ('BethAmAffiliated', 'Notes those users who have an affiliation with Beth Am.'),
-  ('FirstPriority', 'Used by certain system functionality to determine order among users (e.g., scheduling) — grants first priority.'),
   ('SecondPriority', 'Used by certain system functionality to determine order among users — grants second priority.'),
+  ('BethAmAffiliated', 'Notes those users who have an affiliation with Beth Am.'),
   ('SundayBasketball', 'contains paid roster of Sunday players'),
   ('TuesdayBasketball', 'contains paid roster of Tuesday players'),
   ('ThursdayBasketball', 'contains paid roster of Thursday players')

@@ -12,7 +12,7 @@
     "email": "mock.user.1@test.com",
     "name": "Mock User 1",
     "groups": [
-      "Primary"
+      "FirstPriority"
     ]
   },
   {
@@ -20,7 +20,7 @@
     "email": "mock.user.2@test.com",
     "name": "Mock User 2",
     "groups": [
-      "Primary"
+      "FirstPriority"
     ]
   },
   {
@@ -28,7 +28,7 @@
     "email": "mock.user.3@test.com",
     "name": "Mock User 3",
     "groups": [
-      "Primary"
+      "FirstPriority"
     ]
   },
   {
@@ -36,7 +36,7 @@
     "email": "mock.user.4@test.com",
     "name": "Mock User 4",
     "groups": [
-      "Primary"
+      "FirstPriority"
     ]
   },
   {
@@ -44,7 +44,7 @@
     "email": "mock.user.5@test.com",
     "name": "Mock User 5",
     "groups": [
-      "Primary"
+      "FirstPriority"
     ]
   },
   {
@@ -60,8 +60,8 @@
     "email": "test2@skeddle.club",
     "name": "Test User Multi",
     "groups": [
-      "Primary",
-      "Secondary"
+      "FirstPriority",
+      "SecondPriority"
     ]
   }
 ]

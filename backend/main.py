@@ -473,7 +473,7 @@ async def signup(body: SignupRequest, request: Request):
     
     try:
         # Fetch profile with groups (via join table)
-        profile_res = supabase.table("profiles").select("*, profile_groups(user_groups(name))").eq("auth_user_id", user_id).execute()
+        profile_res = supabase.table("profiles").select("*, profile_groups(user_groups(id, name))").eq("auth_user_id", user_id).execute()
         
         profile = None
         if not profile_res.data:
@@ -519,13 +519,18 @@ async def signup(body: SignupRequest, request: Request):
 
     # Flatten groups
     user_groups = []
+    user_group_ids = []
     if profile.get("profile_groups"):
         for pg in profile["profile_groups"]:
             if pg.get("user_groups"):
-                user_groups.append(pg["user_groups"]["name"])
+                group_data = pg["user_groups"]
+                if group_data.get("name"):
+                    user_groups.append(group_data["name"])
+                if group_data.get("id"):
+                    user_group_ids.append(group_data["id"])
 
     # Determine Access
-    is_member = len(user_groups) > 0
+    is_member = len(user_groups) > 0 or len(user_group_ids) > 0
     
     if not is_member:
         # If user has NO groups, they cannot sign up.
@@ -536,7 +541,7 @@ async def signup(body: SignupRequest, request: Request):
         now = get_now()
         
         # Check Eligibility
-        eligibility = check_signup_eligibility(event, user_groups, now)
+        eligibility = check_signup_eligibility(event, user_group_ids, now)
         
         if not eligibility["allowed"]:
              raise HTTPException(status_code=400, detail=eligibility["error_message"])
