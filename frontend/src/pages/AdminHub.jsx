@@ -47,9 +47,25 @@ const AdminHub = ({ session }) => {
                     </div>
                 </Link>
 
+                {/* User Management Card */}
+                <Link to="/admin/users" className="admin-card group">
+                    <div className="p-6 bg-slate-800 rounded-xl border border-slate-700 hover:border-purple-500 transition-all duration-300 shadow-lg hover:shadow-purple-500/10 h-full flex flex-col">
+                        <div className="w-12 h-12 bg-purple-500/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-purple-500/20 transition-colors">
+                            <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-bold text-white mb-2">User Management</h2>
+                        <p className="text-gray-400 flex-grow">Search and manage individual player profiles and their associated groups.</p>
+                        <div className="mt-4 text-purple-400 font-semibold flex items-center gap-2 group-hover:translate-x-1 transition-transform">
+                            Manage Users <span>&rarr;</span>
+                        </div>
+                    </div>
+                </Link>
+
                 {/* Analytics or Other (Placeholder) */}
-                <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 border-dashed flex flex-col items-center justify-center text-center opacity-60">
-                    <p className="text-gray-500 italic">More functionality coming soon...</p>
+                <div className="hidden lg:flex bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 border-dashed flex-col items-center justify-center text-center opacity-60">
+                    <p className="text-gray-500 italic text-sm">More functionality coming soon...</p>
                 </div>
 
             </div>

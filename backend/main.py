@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from db import supabase
-from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate, GroupMemberAction, GroupMembersAction
+from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate, GroupMemberAction, GroupMembersAction, UserGroupsUpdate
 from logic import enrich_event, process_holding_queue, calculate_promotions
 
 app = FastAPI()
@@ -262,6 +262,46 @@ async def list_profiles(request: Request):
     await get_current_admin(request)
     res = supabase.table("profiles").select("id, name, email").order("name").execute()
     return {"status": "success", "data": res.data}
+
+@app.get("/api/admin/profiles/{profile_id}")
+async def get_profile(profile_id: str, request: Request):
+    await get_current_admin(request)
+    # Join with groups
+    res = supabase.table("profiles")\
+        .select("id, name, email, profile_groups(group_id)")\
+        .eq("id", profile_id)\
+        .maybe_single()\
+        .execute()
+    
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Profile not found")
+        
+    # Flatten group IDs
+    data = res.data
+    data["group_ids"] = [pg["group_id"] for pg in data.get("profile_groups", [])]
+    if "profile_groups" in data: del data["profile_groups"]
+    
+    return {"status": "success", "data": data}
+
+@app.post("/api/admin/profiles/{profile_id}/groups")
+async def update_profile_groups(profile_id: str, body: UserGroupsUpdate, request: Request):
+    await get_current_admin(request)
+    
+    # Simple sync: Delete all then insert new
+    # Better to do in a transaction if possible, but this works for MVP
+    try:
+        # 1. Delete existing
+        supabase.table("profile_groups").delete().eq("profile_id", profile_id).execute()
+        
+        # 2. Insert new
+        if body.group_ids:
+            inserts = [{"profile_id": profile_id, "group_id": gid} for gid in body.group_ids]
+            supabase.table("profile_groups").insert(inserts).execute()
+            
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+        
+    return {"status": "success", "message": "Groups updated successfully"}
 
 @app.post("/api/admin/groups/{group_id}/members/batch")
 async def add_group_members_batch(group_id: str, body: GroupMembersAction, request: Request):

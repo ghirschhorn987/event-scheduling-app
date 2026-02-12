@@ -13,6 +13,8 @@ import AdminHub from './pages/AdminHub'
 import AdminApprovals from './pages/AdminApprovals'
 import AdminGroups from './pages/AdminGroups'
 import AdminGroupDetail from './pages/AdminGroupDetail'
+import AdminUsers from './pages/AdminUsers'
+import AdminUserDetail from './pages/AdminUserDetail'
 import EventsListPage from './pages/EventsListPage'
 
 function App() {
@@ -99,6 +101,8 @@ function App() {
                         <Route path="/admin/approvals" element={session ? <AdminApprovals session={session} /> : <Navigate to="/login" />} />
                         <Route path="/admin/groups" element={session ? <AdminGroups session={session} /> : <Navigate to="/login" />} />
                         <Route path="/admin/groups/:groupId" element={session ? <AdminGroupDetail session={session} /> : <Navigate to="/login" />} />
+                        <Route path="/admin/users" element={session ? <AdminUsers session={session} /> : <Navigate to="/login" />} />
+                        <Route path="/admin/users/:profileId" element={session ? <AdminUserDetail session={session} /> : <Navigate to="/login" />} />
                         <Route path="/update-password" element={<UpdatePassword />} />
                         <Route path="/" element={<Navigate to={session ? "/dashboard" : "/login"} />} />
                     </Routes>

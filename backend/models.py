@@ -57,3 +57,6 @@ class GroupMemberAction(BaseModel):
 
 class GroupMembersAction(BaseModel):
     profile_ids: List[str]
+
+class UserGroupsUpdate(BaseModel):
+    group_ids: List[str]
