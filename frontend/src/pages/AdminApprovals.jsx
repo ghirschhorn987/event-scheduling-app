@@ -144,7 +144,10 @@ const AdminDashboard = ({ session }) => {
         <div className="dashboard-container">
             <Header session={session} />
             <div className="admin-header-container mb-6">
-                <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+                <Link to="/admin" className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1 mb-2">
+                    <span>&larr;</span> Back to Admin Hub
+                </Link>
+                <h1 className="text-3xl font-bold">Approve Accounts</h1>
             </div>
 
             <section className="admin-section">
@@ -162,8 +165,14 @@ const AdminDashboard = ({ session }) => {
                                         <p className="text-gray-300"><strong>Email:</strong> {req.email}</p>
                                         <p className="text-gray-300"><strong>Affiliation:</strong> {req.affiliation}</p>
                                         {req.referral && <p className="text-gray-300"><strong>Referral:</strong> {req.referral}</p>}
-                                        <p className="text-gray-300 mb-1">
-                                            <strong>Status:</strong> <span className={`status-${req.status.toLowerCase()} ml-2 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-yellow-900 text-yellow-200`}>{req.status}</span>
+                                        <p className="text-gray-300 mb-1 flex items-center">
+                                            <strong>Status:</strong>
+                                            <span className={`ml-2 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${req.status === 'APPROVED' ? 'bg-emerald-600 text-white' :
+                                                    req.status === 'DECLINED' ? 'bg-red-600 text-white' :
+                                                        req.status === 'PENDING' ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'
+                                                }`}>
+                                                {req.status}
+                                            </span>
                                         </p>
                                         <p className="text-xs text-gray-500 mt-2">Requested: {new Date(req.created_at).toLocaleString()}</p>
                                         {req.admin_notes && <p className="text-sm text-gray-400 mt-1"><em>Note: {req.admin_notes}</em></p>}
@@ -194,9 +203,9 @@ const AdminDashboard = ({ session }) => {
                                                     handleAction(req.id, 'APPROVED', groups)
                                                 }}
                                                 disabled={processing === req.id || req.status === 'APPROVED'}
-                                                className="bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 disabled:opacity-50 text-sm font-semibold mt-1"
+                                                className="bg-emerald-600 text-white px-3 py-2 rounded-lg hover:bg-emerald-500 disabled:opacity-50 text-sm font-bold mt-1 transition-all shadow-md active:scale-95"
                                             >
-                                                {req.status === 'APPROVED' ? 'Approved' : 'Approve'}
+                                                {req.status === 'APPROVED' ? '✓ Approved' : 'Approve Access'}
                                             </button>
                                         </div>
 

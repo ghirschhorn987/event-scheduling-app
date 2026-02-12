@@ -62,7 +62,7 @@ export default function Header({ session }) {
                     )}
 
                     {isAdmin && (
-                        location.pathname === '/admin' ? (
+                        location.pathname.startsWith('/admin') ? (
                             <span className="text-xl font-bold text-gray-400 cursor-default select-none">
                                 Admin
                             </span>

@@ -128,7 +128,7 @@ export default function Dashboard({ session }) {
     const holdingList = signups.filter(s => s.list_type === 'WAITLIST_HOLDING')
 
     // Helper to check if user is in a list
-    const userSignup = signups.find(s => s.user_id === session.user.id)
+    const userSignup = signups.find(s => s.user_id === userProfile?.id)
 
     // Timings
     const rosterOpenTime = nextEvent ? new Date(nextEvent.roster_sign_up_open) : null

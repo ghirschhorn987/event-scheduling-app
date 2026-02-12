@@ -115,18 +115,39 @@ class EmailService:
         return self._send(to_email, subject, html)
 
     def send_access_granted(self, to_email: str, name: str):
-        subject = "Welcome to Skeddle - Access Granted"
-        login_link = "https://skeddle.club/login"
+        subject = "Welcome to Skeddle - Access Approved"
+        signup_link = "https://skeddle.club/signup"
         html = f"""
         <html>
-            <body>
+            <body style="font-family: sans-serif; color: #333; line-height: 1.5;">
                 <p>Hi {name},</p>
                 <p>Good news! Your request to join Skeddle has been approved.</p>
-                <p>You can now log in and sign up for events.</p>
-                <p><a href="{login_link}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Log In to Skeddle</a></p>
-                <br>
-                <p>Welcome aboard,</p>
-                <p>The Skeddle Team</p>
+                <p>You can now create your account to start signing up for events.</p>
+                
+                <p><a href="{signup_link}" style="background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Create Your Account</a></p>
+                
+                <div style="margin-top: 30px; padding: 20px; background-color: #f9f9f9; border-radius: 8px; border: 1px solid #eee;">
+                    <h3 style="margin-top: 0; color: #444;">Choose your sign-up method:</h3>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <strong style="color: #222;">Option 1: Site-Specific Password</strong>
+                        <p style="margin: 5px 0; color: #555; font-size: 14px;">
+                            Create a dedicated password for this site. It is encrypted and remains private; 
+                            the system never sees your actual password. It can't be retrieved, only reset if forgotten.
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <strong style="color: #222;">Option 2: Google Authentication</strong>
+                        <p style="margin: 5px 0; color: #555; font-size: 14px;">
+                            Use your Google account to sign in securely without creating a new password. 
+                            Google validates your identity, and the system never sees your credentials.
+                        </p>
+                    </div>
+                </div>
+
+                <p style="margin-top: 30px;">Welcome aboard,</p>
+                <p><strong>The Skeddle Team</strong></p>
             </body>
         </html>
         """

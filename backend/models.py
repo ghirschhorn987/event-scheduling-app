@@ -51,3 +51,9 @@ class RegistrationUpdate(BaseModel):
     groups: Optional[List[str]] = [] # For approval (List of group names)
     note: Optional[str] = None
     message: Optional[str] = None # Message to user for DECLINE or INFO actions
+
+class GroupMemberAction(BaseModel):
+    email: str
+
+class GroupMembersAction(BaseModel):
+    profile_ids: List[str]

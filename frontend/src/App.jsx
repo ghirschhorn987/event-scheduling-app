@@ -9,7 +9,10 @@ import Signup from './components/Auth/Signup'
 import PasswordReset from './components/Auth/PasswordReset'
 import MockAuthToolbar from './components/MockAuthToolbar'
 import RequestAccess from './pages/RequestAccess'
-import AdminDashboard from './pages/AdminDashboard'
+import AdminHub from './pages/AdminHub'
+import AdminApprovals from './pages/AdminApprovals'
+import AdminGroups from './pages/AdminGroups'
+import AdminGroupDetail from './pages/AdminGroupDetail'
 import EventsListPage from './pages/EventsListPage'
 
 function App() {
@@ -92,7 +95,10 @@ function App() {
                         <Route path="/dashboard" element={session ? <Dashboard session={session} /> : <Navigate to="/login" />} />
                         <Route path="/event/:id" element={session ? <Dashboard session={session} /> : <Navigate to="/login" />} />
                         <Route path="/events" element={session ? <EventsListPage session={session} /> : <Navigate to="/login" />} />
-                        <Route path="/admin" element={session ? <AdminDashboard session={session} /> : <Navigate to="/login" />} />
+                        <Route path="/admin" element={session ? <AdminHub session={session} /> : <Navigate to="/login" />} />
+                        <Route path="/admin/approvals" element={session ? <AdminApprovals session={session} /> : <Navigate to="/login" />} />
+                        <Route path="/admin/groups" element={session ? <AdminGroups session={session} /> : <Navigate to="/login" />} />
+                        <Route path="/admin/groups/:groupId" element={session ? <AdminGroupDetail session={session} /> : <Navigate to="/login" />} />
                         <Route path="/update-password" element={<UpdatePassword />} />
                         <Route path="/" element={<Navigate to={session ? "/dashboard" : "/login"} />} />
                     </Routes>

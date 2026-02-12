@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from db import supabase
-from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate
+from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate, GroupMemberAction, GroupMembersAction
 from logic import enrich_event, process_holding_queue, calculate_promotions
 
 app = FastAPI()
@@ -185,8 +185,106 @@ async def list_user_groups(request: Request):
     """
     await get_current_admin(request)
     
-    res = supabase.table("user_groups").select("*").order("name").execute()
+    res = supabase.table("user_groups").select("*, profile_groups(count)").order("name").execute()
+    
+    # Flatten counts
+    data = []
+    for row in res.data:
+        count = 0
+        if row.get("profile_groups") and len(row["profile_groups"]) > 0:
+            count = row["profile_groups"][0].get("count", 0)
+        
+        data.append({
+            "id": row["id"],
+            "name": row["name"],
+            "description": row["description"],
+            "google_group_id": row.get("google_group_id"),
+            "user_count": count
+        })
+    return {"status": "success", "data": data}
+
+@app.get("/api/admin/groups/{group_id}/members")
+async def list_group_members(group_id: str, request: Request):
+    await get_current_admin(request)
+    # Join profile_groups -> profiles
+    res = supabase.table("profile_groups")\
+        .select("profile_id, profiles(id, name, email)")\
+        .eq("group_id", group_id)\
+        .execute()
+    
+    members = []
+    for row in res.data:
+        if row.get("profiles"):
+            members.append(row["profiles"])
+            
+    return {"status": "success", "data": members}
+
+@app.post("/api/admin/groups/{group_id}/members")
+async def add_group_member(group_id: str, body: GroupMemberAction, request: Request):
+    await get_current_admin(request)
+    
+    # 1. Find profile by email
+    # Case insensitive search might be better
+    profile_res = supabase.table("profiles").select("id").ilike("email", body.email).maybe_single().execute()
+    
+    if not profile_res.data:
+        raise HTTPException(status_code=404, detail=f"User with email {body.email} not found.")
+    
+    profile_id = profile_res.data["id"]
+    
+    # 2. Insert into profile_groups
+    try:
+        supabase.table("profile_groups").insert({
+            "profile_id": profile_id,
+            "group_id": group_id
+        }).execute()
+    except Exception as e:
+        if "unique violation" in str(e).lower() or "duplicate key" in str(e).lower():
+            return {"status": "success", "message": "User already in group"}
+        raise HTTPException(status_code=400, detail=str(e))
+        
+    return {"status": "success", "message": "Member added"}
+
+@app.delete("/api/admin/groups/{group_id}/members/{profile_id}")
+async def remove_group_member(group_id: str, profile_id: str, request: Request):
+    await get_current_admin(request)
+    
+    supabase.table("profile_groups")\
+        .delete()\
+        .eq("group_id", group_id)\
+        .eq("profile_id", profile_id)\
+        .execute()
+        
+    return {"status": "success", "message": "Member removed"}
+
+@app.get("/api/admin/profiles")
+async def list_profiles(request: Request):
+    await get_current_admin(request)
+    res = supabase.table("profiles").select("id, name, email").order("name").execute()
     return {"status": "success", "data": res.data}
+
+@app.post("/api/admin/groups/{group_id}/members/batch")
+async def add_group_members_batch(group_id: str, body: GroupMembersAction, request: Request):
+    await get_current_admin(request)
+    
+    if not body.profile_ids:
+        return {"status": "success", "message": "No members to add"}
+
+    inserts = [{"profile_id": pid, "group_id": group_id} for pid in body.profile_ids]
+    
+    try:
+        # We use a trick to avoid duplicates if possible, or just catch it.
+        # Supabase doesn't easily support UPSERT via the client with specific ON CONFLICT for join tables without a unique constraint name.
+        # But we'll just try and see.
+        supabase.table("profile_groups").insert(inserts).execute()
+    except Exception as e:
+        if "unique violation" in str(e).lower() or "duplicate key" in str(e).lower():
+            # If some were already there, we might still want to know.
+            # But usually it's fine.
+            return {"status": "success", "message": "Members added (some might have been already present)"}
+        raise HTTPException(status_code=400, detail=str(e))
+        
+    return {"status": "success", "message": f"{len(inserts)} members added"}
 
 @app.post("/api/admin/requests/update")
 async def update_request(body: RegistrationUpdate, request: Request):
@@ -215,20 +313,34 @@ async def update_request(body: RegistrationUpdate, request: Request):
 
         # Handle revocation/reset: if it WAS approved and now it is NOT
         if previous_status == 'APPROVED' and db_status != 'APPROVED':
-            # 1. Look for linked profile
-            profile_res = supabase.table("profiles").select("auth_user_id").eq("email", user_email).maybeSingle().execute()
+            # 1. Gather all possible Auth IDs for this user
+            auth_ids_to_delete = set()
             
-            if profile_res.data:
-                auth_id = profile_res.data.get('auth_user_id')
-                if auth_id:
-                    # Delete Supabase Auth user (DB cascade will clean up profile if migration applied)
-                    try:
-                        supabase.auth.admin.delete_user(auth_id)
-                    except Exception as e:
-                        print(f"Warning: Failed to delete auth user {auth_id}: {e}")
-                
-                # Delete profile record (if auth delete didn't cascade or if no auth user existed yet)
-                supabase.table("profiles").delete().eq("email", user_email).execute()
+            # Check Profile
+            profile_res = supabase.table("profiles").select("auth_user_id").eq("email", user_email).maybe_single().execute()
+            if profile_res.data and profile_res.data.get('auth_user_id'):
+                auth_ids_to_delete.add(profile_res.data['auth_user_id'])
+            
+            # Check Auth system directly by email (Source of Truth)
+            try:
+                all_users = supabase.auth.admin.list_users()
+                for u in all_users:
+                    if u.email.lower() == user_email.lower():
+                        auth_ids_to_delete.add(u.id)
+            except Exception as list_e:
+                print(f"Warning: Failed to search Auth users by email {user_email}: {list_e}")
+
+            # 2. Delete Profile
+            supabase.table("profiles").delete().eq("email", user_email).execute()
+
+            # 3. Cleanup Auth Users
+            for auth_id in auth_ids_to_delete:
+                try:
+                    supabase.auth.admin.delete_user(auth_id)
+                    print(f"Successfully deleted auth user {auth_id} for {user_email}")
+                except Exception as e:
+                    # We expect this might fail if one method found a stale ID
+                    print(f"Note: Cleanup of auth user {auth_id} for {user_email}: {e}")
 
         res = supabase.table("registration_requests").update(update_payload).eq("id", body.request_id).execute()
         
@@ -319,16 +431,6 @@ async def signup(body: SignupRequest, request: Request):
     # if existing.data:
     #     raise HTTPException(status_code=400, detail="User already signed up")
     
-    # --- MOCK USER HANDLING (LEGACY REMOVED) ---
-    # The new "Hybrid Mock" system means the user DOES exist in DB (inserted by seed script).
-    # So we simply verify they are not already signed up (below) and then insert.
-    # We DO NOT return fake success anymore.
-    pass
-    # Real Profile Fetch
-    existing = supabase.table("event_signups").select("*").eq("event_id", body.event_id).eq("user_id", user_id).execute()
-    if existing.data:
-        raise HTTPException(status_code=400, detail="User already signed up")
-
     try:
         # Fetch profile with groups (via join table)
         profile_res = supabase.table("profiles").select("*, profile_groups(user_groups(name))").eq("auth_user_id", user_id).execute()
@@ -370,6 +472,11 @@ async def signup(body: SignupRequest, request: Request):
         if isinstance(e, HTTPException): raise e
         raise HTTPException(status_code=500, detail=f"Database error checking profile: {str(e)}")
 
+    # Check if already signed up (using Profile ID)
+    existing = supabase.table("event_signups").select("*").eq("event_id", body.event_id).eq("user_id", profile["id"]).execute()
+    if existing.data:
+        raise HTTPException(status_code=400, detail="User already signed up")
+
     # Flatten groups
     user_groups = []
     if profile.get("profile_groups"):
@@ -385,60 +492,56 @@ async def signup(body: SignupRequest, request: Request):
         raise HTTPException(status_code=403, detail="Only approved members can sign up for events.")
 
     # 2. Logic
-    now = get_now()
-    
-    # Parse event times (assuming ISO strings from DB)
-    # Supabase returns ISO strings. We compare as strings or helper objects
-    # Ideally standardise, but simpler comparison:
-    def to_dt(val):
-        if isinstance(val, datetime):
-            return val
-        return datetime.fromisoformat(val.replace('Z', '+00:00'))
+    try:
+        now = get_now()
+        
+        # Parse event times (assuming ISO strings from DB)
+        def to_dt(val):
+            if isinstance(val, datetime):
+                return val
+            return datetime.fromisoformat(str(val).replace('Z', '+00:00'))
 
-    roster_open = to_dt(event['roster_sign_up_open'])
-    reserve_open = to_dt(event['reserve_sign_up_open'])
-    initial_reserve = to_dt(event['initial_reserve_scheduling'])
-    final_reserve = to_dt(event['final_reserve_scheduling'])
-    max_signups = event['max_signups']
+        roster_open = to_dt(event['roster_sign_up_open'])
+        max_signups = event['max_signups']
 
-    target_list = "EVENT"
-    sequence = None
-    
-    current_roster_count = fetch_counts(body.event_id)
-
-    # Members Logic
-    if now < roster_open:
-         raise HTTPException(status_code=400, detail="Roster signup not yet open")
-    
-    if current_roster_count < max_signups:
         target_list = "EVENT"
-        target_list_count = fetch_counts(body.event_id)
-        sequence = target_list_count + 1
-    else:
-        target_list = "WAITLIST"
-        wl_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST").execute()
-        sequence = wl_res.count + 1
+        sequence = None
+        
+        current_roster_count = fetch_counts(body.event_id)
+        print(f"DEBUG: current_roster_count={current_roster_count}, max={max_signups}")
 
-    # 3. Execute Insert
-    payload = {
-        "event_id": body.event_id,
-        "user_id": user_id,
-        "list_type": target_list,
-        "sequence_number": sequence
-    }
-    
-    res = None
-    res = None
-    if False: # Legacy check removed
-        print(f"Mock Insert bypassed. Payload: {payload}")
-        # Return fake success
-        return {
-            "status": "success", 
-            "data": {**payload, "id": "mock-signup-entry-id", "created_at": now.isoformat()}
+        # Members Logic
+        if now < roster_open:
+             raise HTTPException(status_code=400, detail=f"Roster signup not yet open. Opens at {roster_open}")
+        
+        if current_roster_count < max_signups:
+            target_list = "EVENT"
+            sequence = current_roster_count + 1
+        else:
+            target_list = "WAITLIST"
+            wl_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST").execute()
+            sequence = wl_res.count + 1
+
+        # 3. Execute Insert
+        payload = {
+            "event_id": body.event_id,
+            "user_id": profile["id"],
+            "list_type": target_list,
+            "sequence_number": sequence
         }
-    else:
+        
+        print(f"DEBUG: Payload for insert: {payload}")
         res = supabase.table("event_signups").insert(payload).execute()
+        
+        if not res.data:
+            print(f"DEBUG: Insert returned no data. res={res}")
+            raise HTTPException(status_code=500, detail="Failed to insert signup record")
+
         return {"status": "success", "data": res.data[0]}
+    except Exception as e:
+        print(f"DEBUG: Signup Error: {e}")
+        if isinstance(e, HTTPException): raise e
+        raise HTTPException(status_code=500, detail=f"Internal Logic Error: {str(e)}")
 
 
 @app.post("/api/remove-signup")
@@ -449,11 +552,19 @@ async def remove_signup(body: SignupRequest, request: Request):
         raise HTTPException(status_code=403, detail="You can only remove yourself.")
     
     try:
+        # Get profile ID first
+        profile_res = supabase.table("profiles").select("id").eq("auth_user_id", auth_user.id).single().execute()
+        if not profile_res.data:
+             raise HTTPException(status_code=404, detail="Profile not found")
+        
+        target_profile_id = profile_res.data["id"]
+
         # DB uses Service Role, so RLS bypassed.
-        res = supabase.table("event_signups").delete().eq("event_id", body.event_id).eq("user_id", body.user_id).execute()
+        res = supabase.table("event_signups").delete().eq("event_id", body.event_id).eq("user_id", target_profile_id).execute()
         return {"status": "success", "message": "Signup removed"}
     except Exception as e:
         print(f"Error removing signup: {e}")
+        if isinstance(e, HTTPException): raise e
         raise HTTPException(status_code=500, detail="Failed to remove signup")
 
 
