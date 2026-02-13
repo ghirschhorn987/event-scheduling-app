@@ -6,7 +6,7 @@ set -x
 SERVICE_NAME="event-scheduler"
 REGION="us-central1"
 JOB_NAME="trigger-event-scheduling"
-SCHEDULE="*/15 * * * *"  # Every 15 minutes
+SCHEDULE="*/5 * * * *"  # Every 5 minutes
 URI="https://event-scheduler-113221755789.us-central1.run.app/api/schedule" # Check URL after deployment
 
 # Ensure CRON_SECRET is available
@@ -31,7 +31,7 @@ if gcloud scheduler jobs describe $JOB_NAME --location $REGION --quiet > /dev/nu
         --schedule "$SCHEDULE" \
         --uri "$URI" \
         --http-method POST \
-        --headers "X-Cron-Secret=$CRON_SECRET" \
+        --update-headers "X-Cron-Secret=$CRON_SECRET" \
         --attempt-deadline 30s \
         --quiet
 else

@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from db import supabase
 from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate, GroupMemberAction, GroupMembersAction, UserGroupsUpdate
-from logic import enrich_event, process_holding_queue, calculate_promotions, check_signup_eligibility, determine_event_status
+from logic import enrich_event, randomize_holding_queue, promote_from_holding, check_signup_eligibility, determine_event_status
 
 app = FastAPI()
 

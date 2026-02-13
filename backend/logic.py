@@ -110,7 +110,12 @@ def check_signup_eligibility(event, user_groups, now):
         }
     """
     status = event.get("status")
-    
+
+    # determine efficient status
+    # If legacy 'SCHEDULED', calculate it on the fly
+    if status == "SCHEDULED":
+        status = determine_event_status(event, now)
+
     # 0. Strict Status Enforcement
     if status == "CANCELLED":
         return {"allowed": False, "error_message": "Event is cancelled."}
@@ -135,97 +140,63 @@ def check_signup_eligibility(event, user_groups, now):
     if not tier:
         return {"allowed": False, "error_message": "No valid membership for this event"}
 
-    # 2. Check Windows based on Tier & Status
-    # We can use the status to help, or just strict time. 
-    # The status should ALIGN with time, but let's be double sure with time for robustness.
+    # 2. Status-Based Logic
     
-    # Parse times if strings
-    def to_dt(val):
-        if not val: return None
-        if isinstance(val, datetime): return val
-        return datetime.fromisoformat(str(val).replace('Z', '+00:00'))
-
-    roster_open = to_dt(event.get("roster_sign_up_open"))
-    reserve_open = to_dt(event.get("reserve_sign_up_open"))
-    final_scheduling = to_dt(event.get("final_reserve_scheduling"))
-    
-    # Tier 1 Logic
-    if tier == 1:
-        if now >= roster_open:
+    # OPEN_FOR_ROSTER: Roster only -> EVENT/WAITLIST
+    if status == "OPEN_FOR_ROSTER":
+        if tier == 1:
             return {"allowed": True, "tier": 1, "target_list": "EVENT"}
         else:
-            return {"allowed": False, "error_message": f"Not yet open for Roster members. Opens at {roster_open}"}
-            
-    # Tier 2 & 3 Logic
-    if tier in [2, 3]:
-        # If Reserve window hasn't opened yet
-        if now < reserve_open:
-             return {"allowed": False, "error_message": f"Not yet open for Reserve members. Opens at {reserve_open}"}
-        
-        # If inside Reserve Window but BEFORE Final Scheduling -> HOLDING
-        if now < final_scheduling:
-            return {"allowed": True, "tier": tier, "target_list": "WAITLIST_HOLDING"}
-            
-        # If AFTER Final Scheduling -> Direct Entry (First come first serve)
-        else:
-             return {"allowed": True, "tier": tier, "target_list": "EVENT"}
-             
-    return {"allowed": False, "error_message": "Unknown error"}
+             # Even if Roster is full, reserves cannot sign up yet.
+             return {"allowed": False, "error_message": "Event is currently open for Roster members only."}
 
-def process_holding_queue(holding_users, initial_reserve_scheduling_time):
+    # OPEN_FOR_RESERVES / PRELIMINARY_ORDERING:
+    # Roster -> EVENT/WAITLIST
+    # Reserves -> HOLDING
+    if status in ["OPEN_FOR_RESERVES", "PRELIMINARY_ORDERING"]:
+        if tier == 1:
+             return {"allowed": True, "tier": tier, "target_list": "EVENT"}
+        else: # Tier 2 or 3
+             return {"allowed": True, "tier": tier, "target_list": "WAITLIST_HOLDING"}
+
+    # FINAL_ORDERING:
+    # Everyone -> EVENT/WAITLIST
+    if status == "FINAL_ORDERING":
+        return {"allowed": True, "tier": tier, "target_list": "EVENT"}
+             
+    return {"allowed": False, "error_message": f"Unknown event status: {status}"}
+
+def randomize_holding_queue(holding_users):
     """
-    Sorts a list of holding_users based on the hybrid logic:
-    - Early (created_at < initial_scheduling):
-        - Tier 2 Randomized
-        - Tier 3 Randomized
-        - Tier 2 + Tier 3
-    - Late (created_at >= initial_scheduling):
-        - Sorted by created_at
-        
-    Args:
-        holding_users (list): List of user dicts, must include 'tier' and 'created_at'
-        initial_reserve_scheduling_time (datetime): The cutoff time
+    Randomizes a list of holding_users based on Tier logic:
+    - Group by Tier
+    - Randomize Tier 2
+    - Randomize Tier 3
+    - Return Tier 2 + Tier 3
     
     Returns:
-        list: Sorted list of users
+        list: Sorted list of users (dicts)
     """
     if not holding_users:
         return []
-        
-    def to_dt(val):
-        if not val: return datetime.min
-        if isinstance(val, datetime): return val
-        return datetime.fromisoformat(str(val).replace('Z', '+00:00'))
-    
-    initial_time = to_dt(initial_reserve_scheduling_time)
-
-    early = []
-    late = []
-    
-    for u in holding_users:
-        created_at = to_dt(u.get("created_at"))
-        if created_at < initial_time:
-            early.append(u)
-        else:
-            late.append(u)
             
-    # Sort Early
     # Group by Tier
-    early_t2 = [u for u in early if u.get("tier") == 2]
-    early_t3 = [u for u in early if u.get("tier") == 3] # Or anything else
+    # Assuming 'tier' is present in user dict
+    tier2 = [u for u in holding_users if u.get("tier") == 2]
+    tier3 = [u for u in holding_users if u.get("tier") == 3]
+    others = [u for u in holding_users if u.get("tier") not in [2, 3]]
     
     # Randomize
-    random.shuffle(early_t2)
-    random.shuffle(early_t3)
+    random.shuffle(tier2)
+    random.shuffle(tier3)
+    # Others? Maybe append at end
     
-    # Sort Late by time
-    late.sort(key=lambda x: to_dt(x.get("created_at")))
-    
-    return early_t2 + early_t3 + late
+    return tier2 + tier3 + others
 
-def calculate_promotions(queue, current_roster_count, max_signups, current_waitlist_count):
+def promote_from_holding(queue, current_roster_count, max_signups, current_waitlist_count):
     """
-    Calculates the new status for each user in the queue.
+    takes an ALREADY SORTED queue and assigns them to EVENT or WAITLIST.
+    
     Returns a list of dicts:
     [
         {"id": user_id, "list_type": "EVENT", "sequence_number": 1},
