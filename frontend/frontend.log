@@ -1,0 +1,15 @@
+nohup: ignoring input
+
+> event-scheduling-app@0.0.0 dev
+> vite
+
+
+  VITE v5.4.21  ready in 470 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+6:47:22 AM [vite] hmr update /src/pages/Dashboard.jsx, /src/index.css
+6:59:55 AM [vite] hmr update /src/App.jsx, /src/index.css
+7:00:05 AM [vite] hmr update /src/App.jsx, /src/index.css
+7:00:07 AM [vite] hmr update /src/pages/AdminHub.jsx, /src/index.css
+7:10:08 AM [vite] hmr update /src/pages/Dashboard.jsx, /src/index.css

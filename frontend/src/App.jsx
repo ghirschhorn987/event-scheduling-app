@@ -16,6 +16,7 @@ import AdminGroupDetail from './pages/AdminGroupDetail'
 import AdminUsers from './pages/AdminUsers'
 import AdminUserDetail from './pages/AdminUserDetail'
 import EventsListPage from './pages/EventsListPage'
+import AdminEventTypes from './pages/AdminEventTypes'
 
 function App() {
     const [session, setSession] = useState(null)
@@ -103,6 +104,7 @@ function App() {
                         <Route path="/admin/groups/:groupId" element={session ? <AdminGroupDetail session={session} /> : <Navigate to="/login" />} />
                         <Route path="/admin/users" element={session ? <AdminUsers session={session} /> : <Navigate to="/login" />} />
                         <Route path="/admin/users/:profileId" element={session ? <AdminUserDetail session={session} /> : <Navigate to="/login" />} />
+                        <Route path="/admin/event-types" element={session ? <AdminEventTypes session={session} /> : <Navigate to="/login" />} />
                         <Route path="/update-password" element={<UpdatePassword />} />
                         <Route path="/" element={<Navigate to={session ? "/dashboard" : "/login"} />} />
                     </Routes>

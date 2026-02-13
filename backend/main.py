@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from db import supabase
-from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate, GroupMemberAction, GroupMembersAction, UserGroupsUpdate
+from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate, GroupMemberAction, GroupMembersAction, UserGroupsUpdate, EventTypeCreate, EventTypeUpdate
 from logic import enrich_event, randomize_holding_queue, promote_from_holding, check_signup_eligibility, determine_event_status
 
 app = FastAPI()
@@ -445,6 +445,112 @@ async def update_request(body: RegistrationUpdate, request: Request):
         print(f"Error updating request: {e}")
         raise HTTPException(status_code=400, detail="Failed to update request")
 
+@app.get("/api/admin/event_types")
+async def list_event_types(request: Request):
+    """
+    Fetch all event types with user group names for admin management.
+    """
+    await get_current_admin(request)
+    
+    # Join with user_groups for all three group references
+    res = supabase.table("event_types").select("""
+        *,
+        roster_user_group:user_groups!event_types_roster_user_group_fkey(id, name),
+        reserve_first_priority_user_group:user_groups!event_types_reserve_first_priority_user_group_fkey(id, name),
+        reserve_second_priority_user_group:user_groups!event_types_reserve_second_priority_user_group_fkey(id, name)
+    """).order("name").execute()
+    
+    # Flatten the joined data for easier frontend consumption
+    data = []
+    for row in res.data:
+        event_type = {
+            "id": row["id"],
+            "name": row["name"],
+            "day_of_week": row["day_of_week"],
+            "time_of_day": row["time_of_day"],
+            "time_zone": row["time_zone"],
+            "max_signups": row["max_signups"],
+            "roster_sign_up_open_minutes": row["roster_sign_up_open_minutes"],
+            "reserve_sign_up_open_minutes": row["reserve_sign_up_open_minutes"],
+            "initial_reserve_scheduling_minutes": row["initial_reserve_scheduling_minutes"],
+            "final_reserve_scheduling_minutes": row["final_reserve_scheduling_minutes"],
+            "roster_user_group_id": row.get("roster_user_group", {}).get("id") if row.get("roster_user_group") else None,
+            "roster_user_group_name": row.get("roster_user_group", {}).get("name") if row.get("roster_user_group") else None,
+            "reserve_first_priority_user_group_id": row.get("reserve_first_priority_user_group", {}).get("id") if row.get("reserve_first_priority_user_group") else None,
+            "reserve_first_priority_user_group_name": row.get("reserve_first_priority_user_group", {}).get("name") if row.get("reserve_first_priority_user_group") else None,
+            "reserve_second_priority_user_group_id": row.get("reserve_second_priority_user_group", {}).get("id") if row.get("reserve_second_priority_user_group") else None,
+            "reserve_second_priority_user_group_name": row.get("reserve_second_priority_user_group", {}).get("name") if row.get("reserve_second_priority_user_group") else None,
+        }
+        data.append(event_type)
+    
+    return {"status": "success", "data": data}
+
+@app.post("/api/admin/event_types")
+async def create_event_type(body: EventTypeCreate, request: Request):
+    """
+    Create a new event type.
+    """
+    await get_current_admin(request)
+    
+    try:
+        payload = body.model_dump()
+        res = supabase.table("event_types").insert(payload).execute()
+        
+        if not res.data:
+            raise HTTPException(status_code=500, detail="Failed to create event type")
+        
+        return {"status": "success", "message": "Event type created", "data": res.data[0]}
+    except Exception as e:
+        print(f"Error creating event type: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to create event type: {str(e)}")
+
+@app.put("/api/admin/event_types/{event_type_id}")
+async def update_event_type(event_type_id: str, body: EventTypeUpdate, request: Request):
+    """
+    Update an existing event type. Only updates fields that are provided.
+    """
+    await get_current_admin(request)
+    
+    try:
+        # Only include fields that were actually provided
+        payload = body.model_dump(exclude_unset=True)
+        
+        if not payload:
+            raise HTTPException(status_code=400, detail="No fields to update")
+        
+        res = supabase.table("event_types").update(payload).eq("id", event_type_id).execute()
+        
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Event type not found")
+        
+        return {"status": "success", "message": "Event type updated", "data": res.data[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating event type: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to update event type: {str(e)}")
+
+@app.delete("/api/admin/event_types/{event_type_id}")
+async def delete_event_type(event_type_id: str, request: Request):
+    """
+    Delete an event type. This will cascade to related events.
+    """
+    await get_current_admin(request)
+    
+    try:
+        res = supabase.table("event_types").delete().eq("id", event_type_id).execute()
+        
+        # Supabase delete doesn't error if nothing was deleted, so check data
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Event type not found")
+        
+        return {"status": "success", "message": "Event type deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error deleting event type: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to delete event type: {str(e)}")
+
 @app.post("/api/signup")
 async def signup(body: SignupRequest, request: Request):
     # 0. Verify Auth
@@ -763,6 +869,23 @@ async def trigger_schedule(request: Request):
         # So we must calculate it here explicitly to drive the state machine.
         target_status = determine_event_status(event, now)
         
+        # Check for Manual Override
+        # If status_determinant is MANUAL, we do NOT auto-update the status based on time.
+        # We only respect the current status (which is what we started with).
+        if event.get("status_determinant") == "MANUAL":
+            # However, we MIGHT still need to process Holding Queue if it was manually set to FINAL_ORDERING?
+            # actually logic says: if target == FINAL and current != FINAL -> process.
+            # But if manual, target IS current (effectively).
+            # So if it IS ALREADY FINAL_ORDERING, we might need to process holding? 
+            # The Cron job is "state change" driven mostly.
+            # But if admin manually sets to FINAL_ORDERING, the cron might pick it up?
+            # If admin sets it, they hopefully trigger the RPC or we rely on this script to see "Oh it is FINAL_ORDERING"
+            # But wait, if it IS FINAL_ORDERING, does it need processing?
+            # The transition logic handles "entering" the state.
+            # If manual, we don't "transition" automatically.
+            # So we force target to be current, so no transition happens.
+            target_status = current_status
+        
         if target_status == current_status:
             continue
             
@@ -849,7 +972,34 @@ app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
 
 @app.get("/{full_path:path}")
 async def serve_react_app(full_path: str):
+    from fastapi.responses import Response
+    
     file_path = f"static/{full_path}"
     if os.path.isfile(file_path):
+        # For HTML files, disable caching to ensure fresh content
+        if file_path.endswith('.html'):
+            with open(file_path, 'r') as f:
+                content = f.read()
+            return Response(
+                content=content,
+                media_type="text/html",
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0"
+                }
+            )
         return FileResponse(file_path)
-    return FileResponse("static/index.html")
+    
+    # Serve index.html for client-side routing with no-cache headers
+    with open("static/index.html", 'r') as f:
+        content = f.read()
+    return Response(
+        content=content,
+        media_type="text/html",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )

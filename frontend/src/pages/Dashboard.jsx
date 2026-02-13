@@ -367,6 +367,7 @@ export default function Dashboard({ session }) {
                             </div>
                         </div>
 
+
                         {/* Lists Display */}
                         <div className="space-y-4">
                             <div className="bg-slate-800 p-4 rounded shadow">
