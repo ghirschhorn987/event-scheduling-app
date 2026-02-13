@@ -33,10 +33,10 @@ SERVICE_NAME="event-scheduler"
 echo "Deploying to Project: $PROJECT_ID"
 
 # 3. Build & Submit to Container Registry (Cloud Build)
-# echo "Submitting build to Cloud Build..."
-# gcloud builds submit --config cloudbuild.yaml \
-#     --project $PROJECT_ID \
-#     --substitutions _VITE_SUPABASE_URL="$VITE_SUPABASE_URL",_VITE_SUPABASE_ANON_KEY="$VITE_SUPABASE_ANON_KEY",_VITE_USE_MOCK_AUTH="${VITE_USE_MOCK_AUTH:-false}",_SERVICE_NAME="$SERVICE_NAME" .
+echo "Submitting build to Cloud Build..."
+gcloud builds submit --config cloudbuild.yaml \
+    --project $PROJECT_ID \
+    --substitutions _VITE_SUPABASE_URL="$VITE_SUPABASE_URL",_VITE_SUPABASE_ANON_KEY="$VITE_SUPABASE_ANON_KEY",_VITE_USE_MOCK_AUTH="${VITE_USE_MOCK_AUTH:-false}",_SERVICE_NAME="$SERVICE_NAME" .
 
 # 4. Deploy to Cloud Run
 echo "Deploying to Cloud Run..."
