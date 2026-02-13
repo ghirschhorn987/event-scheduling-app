@@ -614,8 +614,52 @@ async def remove_signup(body: SignupRequest, request: Request):
         
         target_profile_id = profile_res.data["id"]
 
-        # DB uses Service Role, so RLS bypassed.
+        # 1. Fetch current signup status BEFORE deleting
+        current_signup_res = supabase.table("event_signups")\
+            .select("list_type")\
+            .eq("event_id", body.event_id)\
+            .eq("user_id", target_profile_id)\
+            .maybe_single()\
+            .execute()
+            
+        current_list_type = current_signup_res.data["list_type"] if current_signup_res.data else None
+
+        # 2. Delete the signup
         res = supabase.table("event_signups").delete().eq("event_id", body.event_id).eq("user_id", target_profile_id).execute()
+        
+        # 3. Auto-Promote if needed
+        # If the user was in the EVENT list, we should promote the first person from WAITLIST.
+        # We explicitly IGNORE "WAITLIST_HOLDING" - they are not ready for promotion yet.
+        if current_list_type == "EVENT":
+            print(f"User removed from EVENT roster. checking for waitlist promotion...")
+            
+            # Find the highest priority waitlist member
+            # Sorted by sequence_number ascending (1, 2, 3...)
+            # If sequence is null/zero, fall back to created_at
+            next_up_res = supabase.table("event_signups")\
+                .select("*")\
+                .eq("event_id", body.event_id)\
+                .eq("list_type", "WAITLIST")\
+                .order("sequence_number", desc=False)\
+                .order("created_at", desc=False)\
+                .limit(1)\
+                .execute()
+                
+            if next_up_res.data:
+                next_person = next_up_res.data[0]
+                print(f"Promoting user {next_person['user_id']} from WAITLIST to EVENT")
+                
+                # Get current max sequence for EVENT? Or just append?
+                # Actually, sequence in EVENT list matters less for order, but let's be tidy.
+                # Just appending is fine.
+                
+                # Update them to EVENT
+                supabase.table("event_signups").update({
+                    "list_type": "EVENT"
+                }).eq("id", next_person["id"]).execute()
+                
+                # Notification logic would go here (Notify promoted user)
+
         return {"status": "success", "message": "Signup removed"}
     except Exception as e:
         print(f"Error removing signup: {e}")
@@ -694,11 +738,9 @@ async def trigger_schedule(request: Request):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     now = get_now()
-    now_iso = now.isoformat()
     
-    # --- 1. STATUS UPDATE ROUTINE ---
+    # --- STATUS UPDATE ROUTINE ---
     # Fetch all events that are NOT Finished or Cancelled
-    # We want to keep their statuses up to date
     
     active_events_res = supabase.table("events")\
         .select("*, event_types(*)")\
@@ -710,66 +752,104 @@ async def trigger_schedule(request: Request):
     
     from logic import determine_event_status
     
-    events_to_process = []
+    processed_count = 0
+    promoted_count = 0
     
     for event in enriched_active:
         current_status = event["status"]
-        new_status = determine_event_status(event, now)
         
-        if new_status != current_status:
-            print(f"Updating Event {event['id']} status: {current_status} -> {new_status}")
-            supabase.table("events").update({"status": new_status}).eq("id", event["id"]).execute()
-            # Update local object for processing
-            event["status"] = new_status
-            
-        # Identify events ready for Holding Processing
-        # Requirement: Process when status is FINAL_ORDERING
-        if new_status == "FINAL_ORDERING":
-            events_to_process.append(event)
-
-
-    # --- 2. PROCESS HOLDING QUEUES ---
-    processed_count = 0
-    
-    for event in events_to_process:
-        event_id = event['id']
-        max_signups = event['max_signups']
+        # Calculate what status SHOULD be based on time
+        # enrich_event no longer auto-sets this for us (except for legacy SCHEDULED)
+        # So we must calculate it here explicitly to drive the state machine.
+        target_status = determine_event_status(event, now)
         
-        # Check for Holding users
-        holding_res = supabase.table("event_signups")\
-            .select("*")\
-            .eq("event_id", event_id)\
-            .eq("list_type", "WAITLIST_HOLDING")\
-            .execute()
-            
-        holding_users = holding_res.data
-        if not holding_users:
+        if target_status == current_status:
             continue
             
-        # Sort Logic
-        initial_scheduling_time = event["initial_reserve_scheduling"]
-        queue = process_holding_queue(holding_users, initial_scheduling_time)
+        print(f"Event {event['id']}: Transitioning {current_status} -> {target_status}")
         
-        # Promote
-        roster_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", event_id).eq("list_type", "EVENT").execute()
-        current_roster_count = roster_res.count or 0
+        # TRANSACTIONAL SAFETY LOGIC:
+        # If we are transitioning to FINAL_ORDERING, we must process the Holding Queue FIRST.
+        # This ensures that if the process fails mid-way, the status remains in the old state (e.g. PRELIMINARY_ORDERING).
+        # The next Cron run will see the old state + current time and try again.
         
-        waitlist_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", event_id).eq("list_type", "WAITLIST").execute()
-        current_waitlist_count = waitlist_res.count or 0
-        
-        # Calculate new statuses
-        updates = calculate_promotions(queue, current_roster_count, max_signups, current_waitlist_count)
-        
-        # Execute Batch Updates
-        for update in updates:
-            supabase.table("event_signups").update({
-                "list_type": update["list_type"],
-                "sequence_number": update["sequence_number"]
-            }).eq("id", update["id"]).execute()
+        if target_status == "FINAL_ORDERING" and current_status != "FINAL_ORDERING":
+            # 1. Process Holding Queue
+            print(f"Processing Holding Queue for Event {event['id']}...")
             
-            processed_count += 1
+            holding_res = supabase.table("event_signups")\
+                .select("*")\
+                .eq("event_id", event["id"])\
+                .eq("list_type", "WAITLIST_HOLDING")\
+                .execute()
+                
+            holding_users = holding_res.data
+            
+            if holding_users:
+                # A. Randomize / Sort
+                # Note: logic.randomize_holding_queue handles Tier 2/3 randomization
+                queue = randomize_holding_queue(holding_users)
+                
+                # B. Get current counts
+                roster_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", event["id"]).eq("list_type", "EVENT").execute()
+                current_roster_count = roster_res.count or 0
+                
+                waitlist_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", event["id"]).eq("list_type", "WAITLIST").execute()
+                current_waitlist_count = waitlist_res.count or 0
+                
+                # C. Calculate Moves
+                updates = promote_from_holding(queue, current_roster_count, event["max_signups"], current_waitlist_count)
+                
+                # D. Execute Moves (Atomic Batch via RPC)
+                update_list = []
+                for update in updates:
+                    update_list.append({
+                        "id": str(update["id"]),
+                        "list_type": update["list_type"],
+                        "sequence_number": update["sequence_number"]
+                    })
+                
+                print(f"Executing RPC update_event_status_batch for {len(update_list)} updates...")
+                
+                try:
+                    rpc_res = supabase.rpc("update_event_status_batch", {
+                        "p_event_id": str(event["id"]),
+                        "p_updates": update_list,
+                        "p_final_status": target_status
+                    }).execute()
+                    
+                    print(f"RPC Result: {rpc_res.data}")
+                    processed_count += 1
+                    promoted_count += len(update_list)
+                    
+                except Exception as rpc_e:
+                    print(f"CRITICAL: RPC Failed for Event {event['id']}: {rpc_e}")
+                    continue
 
-    return {"status": "completed", "processed_events": len(events_to_process), "users_promoted": processed_count}
+        else:
+            # 2. Update Status (Simple Transition)
+            # Use RPC ensuring it is transactional even if just one update
+            print(f"Executing RPC update_event_status_batch (Status Only update)...")
+            try:
+                supabase.rpc("update_event_status_batch", {
+                    "p_event_id": str(event["id"]),
+                    "p_updates": [], # Empty list
+                    "p_final_status": target_status
+                }).execute()
+                processed_count += 1
+            except Exception as e:
+                print(f"Error updating status for {event['id']}: {e}")
+
+    return {"status": "completed", "processed_events": processed_count, "users_promoted": promoted_count}
+            else:
+                print("No users in Holding Queue.")
+
+        # 2. Update Status (The "Commit")
+        # We only update the status AFTER we have attempted to process the queue (if applicable).
+        supabase.table("events").update({"status": target_status}).eq("id", event["id"]).execute()
+        processed_count += 1
+
+    return {"status": "completed", "processed_transitions": processed_count, "users_promoted": promoted_count}
 
 
 # Serve React App (SPA)

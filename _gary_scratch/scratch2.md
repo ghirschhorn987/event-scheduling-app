@@ -1,0 +1,1 @@
+Whenever someone removes themselves from the event, we need to check if there is someone on the waitlist for that event. If there is, we need to move them to the event.  We shhould not change waitlist holding list.

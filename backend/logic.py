@@ -38,13 +38,22 @@ def enrich_event(event_data, now=None):
     
     event_data["waitlist_sign_up_open"] = event_data["roster_sign_up_open"]
 
-    # Calculate Status
-    if now is None:
-        now = datetime.now(timezone.utc)
-        
-    # Only override if not manually CANCELLED
-    if event_data.get("status") != "CANCELLED":
+    # Calculate/Confirm Status
+    # In the new architecture, the Database is the Single Source of Truth for Status.
+    # The Cron Job updates it.
+    # HOWEVER: For backward compatibility during migration tailored to user request:
+    # If status is "SCHEDULED" (deprecated), calculate it dynamically.
+    # If status is one of the new valid ones, USE IT AS IS.
+    
+    current_status = event_data.get("status")
+    
+    if current_status == "SCHEDULED":
+        if now is None:
+            now = datetime.now(timezone.utc)
         event_data["status"] = determine_event_status(event_data, now)
+    
+    # Otherwise, trust the DB (e.g. NOT_YET_OPEN, OPEN_FOR_ROSTER, etc.)
+    # This ensures consistency between API and direct DB reads.
 
     return event_data
 

@@ -372,11 +372,13 @@ export default function Dashboard({ session }) {
                             <div className="bg-slate-800 p-4 rounded shadow">
                                 <h3 className="font-bold border-b pb-2 mb-2">Main Roster</h3>
                                 <ul>
-                                    {eventList.map((s, i) => (
-                                        <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
-                                            <span>{i + 1}. {s.profiles?.name || 'Guest'}</span>
-                                        </li>
-                                    ))}
+                                    {eventList
+                                        .sort((a, b) => (a.sequence_number || 9999) - (b.sequence_number || 9999))
+                                        .map((s, i) => (
+                                            <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
+                                                <span>{i + 1}. {s.profiles?.name || 'Guest'}</span>
+                                            </li>
+                                        ))}
                                     {eventList.length === 0 && <li className="text-gray-500 italic">Empty</li>}
                                 </ul>
                             </div>
@@ -384,11 +386,13 @@ export default function Dashboard({ session }) {
                             <div className="bg-slate-800 p-4 rounded shadow">
                                 <h3 className="font-bold border-b pb-2 mb-2">Waitlist</h3>
                                 <ul>
-                                    {waitList.map((s, i) => (
-                                        <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
-                                            <span>{i + 1}. {s.profiles?.name || 'Guest'}</span>
-                                        </li>
-                                    ))}
+                                    {waitList
+                                        .sort((a, b) => (a.sequence_number || 9999) - (b.sequence_number || 9999))
+                                        .map((s, i) => (
+                                            <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
+                                                <span>{i + 1}. {s.profiles?.name || 'Guest'}</span>
+                                            </li>
+                                        ))}
                                     {waitList.length === 0 && <li className="text-gray-500 italic">Empty</li>}
                                 </ul>
                             </div>
@@ -397,11 +401,26 @@ export default function Dashboard({ session }) {
                                 <div className="bg-slate-800 p-4 rounded shadow">
                                     <h3 className="font-bold border-b pb-2 mb-2">Holding Area</h3>
                                     <ul>
-                                        {holdingList.map((s, i) => (
-                                            <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
-                                                <span>- {s.profiles?.name || 'Guest'}</span>
-                                            </li>
-                                        ))}
+                                        {/* 
+                                            Logic:
+                                            - If OPEN_FOR_RESERVES: Sort by Time, Show '-'
+                                            - Else: Sort by Sequence (Randomized), Show Number
+                                        */}
+                                        {holdingList
+                                            .sort((a, b) => {
+                                                if (nextEvent.status === 'OPEN_FOR_RESERVES') {
+                                                    return new Date(a.created_at) - new Date(b.created_at)
+                                                } else {
+                                                    return (a.sequence_number || 9999) - (b.sequence_number || 9999)
+                                                }
+                                            })
+                                            .map((s, i) => (
+                                                <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
+                                                    <span>
+                                                        {nextEvent.status === 'OPEN_FOR_RESERVES' ? '-' : (i + 1) + '.'} {s.profiles?.name || 'Guest'}
+                                                    </span>
+                                                </li>
+                                            ))}
                                     </ul>
                                 </div>
                             )}
