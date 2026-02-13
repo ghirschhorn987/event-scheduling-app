@@ -325,3 +325,21 @@ Traceback (most recent call last):
   File "/home/ghirschhorn/dev/antigravity-projects/event-scheduling-app/backend/main.py", line 844
     else:
 IndentationError: unexpected indent
+WARNING:  StatReload detected changes in 'main.py'. Reloading...
+INFO:     Started server process [258338]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+Auth Error: invalid JWT: unable to parse or verify signature, token has invalid claims: token is expired
+INFO:     127.0.0.1:48278 - "GET /api/events HTTP/1.1" 401 Unauthorized
+Auth Error: invalid JWT: unable to parse or verify signature, token has invalid claims: token is expired
+INFO:     127.0.0.1:46188 - "GET /api/events HTTP/1.1" 401 Unauthorized
+Auth Error: invalid JWT: unable to parse or verify signature, token has invalid claims: token is expired
+INFO:     127.0.0.1:45100 - "GET /api/events HTTP/1.1" 401 Unauthorized
+Auth Error: invalid JWT: unable to parse or verify signature, token has invalid claims: token is expired
+INFO:     127.0.0.1:48664 - "GET /api/events HTTP/1.1" 401 Unauthorized
+Auth Error: invalid JWT: unable to parse or verify signature, token has invalid claims: token is expired
+INFO:     127.0.0.1:47794 - "GET /api/events HTTP/1.1" 401 Unauthorized
+Auth Error: invalid JWT: unable to parse or verify signature, token has invalid claims: token is expired
+INFO:     127.0.0.1:46174 - "GET /api/events HTTP/1.1" 401 Unauthorized
+Auth Error: invalid JWT: unable to parse or verify signature, token has invalid claims: token is expired
+INFO:     127.0.0.1:48128 - "GET /api/events HTTP/1.1" 401 Unauthorized

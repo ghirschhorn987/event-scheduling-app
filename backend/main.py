@@ -841,15 +841,7 @@ async def trigger_schedule(request: Request):
                 print(f"Error updating status for {event['id']}: {e}")
 
     return {"status": "completed", "processed_events": processed_count, "users_promoted": promoted_count}
-            else:
-                print("No users in Holding Queue.")
 
-        # 2. Update Status (The "Commit")
-        # We only update the status AFTER we have attempted to process the queue (if applicable).
-        supabase.table("events").update({"status": target_status}).eq("id", event["id"]).execute()
-        processed_count += 1
-
-    return {"status": "completed", "processed_transitions": processed_count, "users_promoted": promoted_count}
 
 
 # Serve React App (SPA)
