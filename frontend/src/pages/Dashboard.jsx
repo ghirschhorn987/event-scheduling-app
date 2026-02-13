@@ -48,7 +48,6 @@ export default function Dashboard({ session }) {
                     const { data: events } = await supabase
                         .from('events')
                         .select('*, event_types(*)') // Join types
-                        .eq('status', 'SCHEDULED')
                         .gt('event_date', now)
                         .order('event_date', { ascending: true })
                         .limit(1)
@@ -318,6 +317,17 @@ export default function Dashboard({ session }) {
 
                         {/* Combined Status & Actions Compact Card */}
                         <div className="bg-slate-800 p-4 rounded shadow mb-6 border border-slate-700 flex flex-col md:flex-row items-center justify-between gap-4">
+
+                            {/* Status Badge */}
+                            <span className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider ${nextEvent.status === 'OPEN_FOR_ROSTER' ? 'bg-green-900 text-green-300' :
+                                nextEvent.status === 'OPEN_FOR_RESERVES' ? 'bg-blue-900 text-blue-300' :
+                                    nextEvent.status === 'PRELIMINARY_ORDERING' ? 'bg-yellow-900 text-yellow-300' :
+                                        nextEvent.status === 'FINAL_ORDERING' ? 'bg-orange-900 text-orange-300' :
+                                            nextEvent.status === 'CANCELLED' ? 'bg-red-900 text-red-300' :
+                                                'bg-gray-700 text-gray-300'
+                                }`}>
+                                {nextEvent.status.replace(/_/g, ' ')}
+                            </span>
 
                             {/* Counts */}
                             <div className="flex gap-4 text-sm font-medium">

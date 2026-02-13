@@ -1,7 +1,7 @@
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-def enrich_event(event_data):
+def enrich_event(event_data, now=None):
     """
     Takes raw event data (joined with event_types) and computes the detailed timestamps
     and fields expected by the frontend 'Event' model.
@@ -38,8 +38,59 @@ def enrich_event(event_data):
     
     event_data["waitlist_sign_up_open"] = event_data["roster_sign_up_open"]
 
+    # Calculate Status
+    if now is None:
+        now = datetime.now(timezone.utc)
+        
+    # Only override if not manually CANCELLED
+    if event_data.get("status") != "CANCELLED":
+        event_data["status"] = determine_event_status(event_data, now)
+
     return event_data
 
+
+def determine_event_status(event, now):
+    """
+    Calculates the correct EventStatus based on time windows.
+    Does NOT handle 'CANCELLED' as that is a manual override.
+    
+    Args:
+        event (dict): Enriched event object
+        now (datetime): Current timestamp
+    
+    Returns:
+        str: one of EventStatus values
+    """
+    # Parse times
+    def to_dt(val):
+        if not val: return None
+        if isinstance(val, datetime): return val
+        return datetime.fromisoformat(str(val).replace('Z', '+00:00'))
+
+    # If already cancelled, stay cancelled (this function is usually for auto-updates)
+    # But usually the caller handles the "if not cancelled" check. 
+    # We will return the TIME-BASED status here.
+    
+    roster_open = to_dt(event.get("roster_sign_up_open"))
+    reserve_open = to_dt(event.get("reserve_sign_up_open"))
+    initial_scheduling = to_dt(event.get("initial_reserve_scheduling"))
+    final_scheduling = to_dt(event.get("final_reserve_scheduling"))
+    
+    # Assuming event_date is start time
+    event_start = to_dt(event.get("event_date"))
+    
+    if now < roster_open:
+        return "NOT_YET_OPEN"
+    elif now < reserve_open:
+        return "OPEN_FOR_ROSTER"
+    elif now < initial_scheduling:
+        return "OPEN_FOR_RESERVES"
+    elif now < final_scheduling:
+        return "PRELIMINARY_ORDERING"
+    elif now < event_start:
+        return "FINAL_ORDERING"
+    else:
+        return "FINISHED"
 
 def check_signup_eligibility(event, user_groups, now):
     """
@@ -58,6 +109,16 @@ def check_signup_eligibility(event, user_groups, now):
             "error_message": str (optional)
         }
     """
+    status = event.get("status")
+    
+    # 0. Strict Status Enforcement
+    if status == "CANCELLED":
+        return {"allowed": False, "error_message": "Event is cancelled."}
+    if status == "FINISHED":
+        return {"allowed": False, "error_message": "Event has finished."}
+    if status == "NOT_YET_OPEN":
+        return {"allowed": False, "error_message": "Event signups are not yet open."}
+        
     # 1. Determine Tier
     tier = None
     
@@ -74,7 +135,9 @@ def check_signup_eligibility(event, user_groups, now):
     if not tier:
         return {"allowed": False, "error_message": "No valid membership for this event"}
 
-    # 2. Check Windows based on Tier
+    # 2. Check Windows based on Tier & Status
+    # We can use the status to help, or just strict time. 
+    # The status should ALIGN with time, but let's be double sure with time for robustness.
     
     # Parse times if strings
     def to_dt(val):

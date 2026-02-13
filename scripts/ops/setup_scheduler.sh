@@ -1,12 +1,13 @@
 #!/bin/bash
 set -e
+set -x
 
 # Configuration
 SERVICE_NAME="event-scheduler"
 REGION="us-central1"
 JOB_NAME="trigger-event-scheduling"
 SCHEDULE="*/15 * * * *"  # Every 15 minutes
-URI="https://event-scheduler-486106.run.app/api/schedule" # Check URL after deployment
+URI="https://event-scheduler-113221755789.us-central1.run.app/api/schedule" # Check URL after deployment
 
 # Ensure CRON_SECRET is available
 if [ -z "$CRON_SECRET" ]; then
@@ -23,7 +24,7 @@ fi
 echo "Creating/Updating Cloud Scheduler Job: $JOB_NAME"
 
 # Check if job exists
-if gcloud scheduler jobs describe $JOB_NAME --location $REGION > /dev/null 2>&1; then
+if gcloud scheduler jobs describe $JOB_NAME --location $REGION --quiet > /dev/null 2>&1; then
     echo "Updating existing job..."
     gcloud scheduler jobs update http $JOB_NAME \
         --location $REGION \
@@ -31,7 +32,8 @@ if gcloud scheduler jobs describe $JOB_NAME --location $REGION > /dev/null 2>&1;
         --uri "$URI" \
         --http-method POST \
         --headers "X-Cron-Secret=$CRON_SECRET" \
-        --attempt-deadline 30s
+        --attempt-deadline 30s \
+        --quiet
 else
     echo "Creating new job..."
     gcloud scheduler jobs create http $JOB_NAME \
@@ -40,7 +42,8 @@ else
         --uri "$URI" \
         --http-method POST \
         --headers "X-Cron-Secret=$CRON_SECRET" \
-        --attempt-deadline 30s
+        --attempt-deadline 30s \
+        --quiet
 fi
 
 echo "Scheduler Job Configured Successfully!"

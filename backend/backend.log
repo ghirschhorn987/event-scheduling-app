@@ -1,0 +1,82 @@
+nohup: ignoring input
+INFO:     Will watch for changes in these directories: ['/home/ghirschhorn/dev/antigravity-projects/event-scheduling-app/backend']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [85562] using StatReload
+INFO:     Started server process [85565]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'migrate_statuses.py'. Reloading...
+INFO:     127.0.0.1:47490 - "GET /api/events HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [85565]
+INFO:     Started server process [85937]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:47698 - "GET /api/events HTTP/1.1" 200 OK
+Signup Request: user=92d96815-8f51-40e5-82ef-e1f4429eba57 event=a783d062-e1e8-4dcc-b806-0730c683def4
+DEBUG: Payload for insert: {'event_id': 'a783d062-e1e8-4dcc-b806-0730c683def4', 'user_id': '47c5ef2e-1613-4e0b-bcd5-a00254c574e5', 'list_type': 'EVENT', 'sequence_number': 2, 'tier': 1}
+INFO:     127.0.0.1:47710 - "POST /api/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47658 - "POST /api/remove-signup HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'update_enum.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [85937]
+INFO:     Started server process [86681]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'migrate_statuses.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [86681]
+INFO:     Started server process [213320]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'migrate_statuses.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [213320]
+INFO:     Started server process [214939]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:46206 - "GET /api/events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46216 - "GET /api/events HTTP/1.1" 200 OK
+Signup Request: user=92d96815-8f51-40e5-82ef-e1f4429eba57 event=e7fb6214-14e6-4289-b72f-e3bb29e30298
+DEBUG: Payload for insert: {'event_id': 'e7fb6214-14e6-4289-b72f-e3bb29e30298', 'user_id': '47c5ef2e-1613-4e0b-bcd5-a00254c574e5', 'list_type': 'EVENT', 'sequence_number': 1, 'tier': 1}
+INFO:     127.0.0.1:47910 - "POST /api/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45250 - "POST /api/remove-signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45254 - "GET /api/events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45264 - "GET /api/events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45850 - "POST /api/remove-signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47200 - "GET /api/events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47214 - "GET /api/events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46936 - "GET /api/events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46952 - "GET /api/events HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'logic.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [214939]
+WARNING:  StatReload detected changes in 'logic.py'. Reloading...
+INFO:     Started server process [219658]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'logic.py'. Reloading...
+INFO:     Started server process [219669]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Started server process [219676]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [219676]
+INFO:     Started server process [219715]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.

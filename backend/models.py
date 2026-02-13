@@ -1,3 +1,4 @@
+from enum import Enum
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
@@ -10,6 +11,15 @@ class ScheduleResponse(BaseModel):
     status: str
     message: str
     updated_count: int
+
+class EventStatus(str, Enum):
+    NOT_YET_OPEN = "NOT_YET_OPEN"
+    OPEN_FOR_ROSTER = "OPEN_FOR_ROSTER"
+    OPEN_FOR_RESERVES = "OPEN_FOR_RESERVES"
+    PRELIMINARY_ORDERING = "PRELIMINARY_ORDERING"
+    FINAL_ORDERING = "FINAL_ORDERING"
+    FINISHED = "FINISHED"
+    CANCELLED = "CANCELLED"
 
 class EventType(BaseModel):
     id: str

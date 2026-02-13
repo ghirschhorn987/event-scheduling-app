@@ -66,11 +66,14 @@ export default function EventsListPage({ session }) {
                                         {/* Row 2: Status, Roster/Reserve, Action */}
                                         <div className="flex justify-between items-center">
                                             <div className="flex items-center gap-3 text-sm">
-                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${event.status === 'SCHEDULED' ? 'bg-green-900 text-green-300' :
-                                                    event.status === 'CANCELLED' ? 'bg-red-900 text-red-300' :
-                                                        'bg-yellow-900 text-yellow-300'
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${event.status === 'OPEN_FOR_ROSTER' ? 'bg-green-900 text-green-300' :
+                                                        event.status === 'OPEN_FOR_RESERVES' ? 'bg-blue-900 text-blue-300' :
+                                                            event.status === 'PRELIMINARY_ORDERING' ? 'bg-yellow-900 text-yellow-300' :
+                                                                event.status === 'FINAL_ORDERING' ? 'bg-orange-900 text-orange-300' :
+                                                                    event.status === 'CANCELLED' ? 'bg-red-900 text-red-300' :
+                                                                        'bg-gray-700 text-gray-300'
                                                     }`}>
-                                                    {event.status}
+                                                    {event.status.replace(/_/g, ' ')}
                                                 </span>
                                                 <span className="text-gray-400 font-mono">
                                                     {event.counts?.roster || 0} / {reserveCount}

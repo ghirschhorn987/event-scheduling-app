@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from db import supabase
 from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate, GroupMemberAction, GroupMembersAction, UserGroupsUpdate
-from logic import enrich_event, process_holding_queue, calculate_promotions, check_signup_eligibility
+from logic import enrich_event, process_holding_queue, calculate_promotions, check_signup_eligibility, determine_event_status
 
 app = FastAPI()
 
@@ -696,22 +696,42 @@ async def trigger_schedule(request: Request):
     now = get_now()
     now_iso = now.isoformat()
     
-    # 1. Find Events ready for processing
-    # Status is SCHEDULED AND final_reserve_scheduling <= now
-    # We could also add a flag "processed" to avoid re-running, but idempotency is better.
-    events_res = supabase.table("events")\
-        .select("*, event_types(*)")\
-        .eq("status", "SCHEDULED")\
-        .execute()
+    # --- 1. STATUS UPDATE ROUTINE ---
+    # Fetch all events that are NOT Finished or Cancelled
+    # We want to keep their statuses up to date
     
-    # We enrich first to get the calculated fields
-    enriched_events = [enrich_event(e) for e in events_res.data]
+    active_events_res = supabase.table("events")\
+        .select("*, event_types(*)")\
+        .neq("status", "FINISHED")\
+        .neq("status", "CANCELLED")\
+        .execute()
+        
+    enriched_active = [enrich_event(e) for e in active_events_res.data]
+    
+    from logic import determine_event_status
+    
+    events_to_process = []
+    
+    for event in enriched_active:
+        current_status = event["status"]
+        new_status = determine_event_status(event, now)
+        
+        if new_status != current_status:
+            print(f"Updating Event {event['id']} status: {current_status} -> {new_status}")
+            supabase.table("events").update({"status": new_status}).eq("id", event["id"]).execute()
+            # Update local object for processing
+            event["status"] = new_status
+            
+        # Identify events ready for Holding Processing
+        # Requirement: Process when status is FINAL_ORDERING
+        if new_status == "FINAL_ORDERING":
+            events_to_process.append(event)
 
-    # Filter by time manually since we can't easily filter on calculated field in DB
-    events = [e for e in enriched_events if e["final_reserve_scheduling"] <= now]
+
+    # --- 2. PROCESS HOLDING QUEUES ---
     processed_count = 0
     
-    for event in events:
+    for event in events_to_process:
         event_id = event['id']
         max_signups = event['max_signups']
         
@@ -726,13 +746,11 @@ async def trigger_schedule(request: Request):
         if not holding_users:
             continue
             
-        # 2. Sort Logic (Moved to logic.py)
-        # We need the initial_reserve_scheduling time
+        # Sort Logic
         initial_scheduling_time = event["initial_reserve_scheduling"]
         queue = process_holding_queue(holding_users, initial_scheduling_time)
         
-        # 3. Promote (Logic moved to logic.py, DB fetch stays here)
-        # We need current roster count *right now*
+        # Promote
         roster_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", event_id).eq("list_type", "EVENT").execute()
         current_roster_count = roster_res.count or 0
         
@@ -751,7 +769,7 @@ async def trigger_schedule(request: Request):
             
             processed_count += 1
 
-    return {"status": "completed", "processed_events": len(events), "users_promoted": processed_count}
+    return {"status": "completed", "processed_events": len(events_to_process), "users_promoted": processed_count}
 
 
 # Serve React App (SPA)
