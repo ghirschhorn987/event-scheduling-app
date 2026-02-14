@@ -31,6 +31,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ .
 
+# Remove any existing static directory to ensure clean frontend deployment
+RUN rm -rf static
+
 # Copy built frontend assets to static folder
 # Vite output is in dist/
 COPY --from=frontend-builder /app/frontend/dist ./static
