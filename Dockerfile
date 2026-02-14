@@ -6,6 +6,8 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci
 
+# Cache buster - changing this forces rebuild of all subsequent layers
+ARG CACHEBUST=1
 # Copy source and build
 COPY frontend/ ./
 ARG VITE_SUPABASE_URL

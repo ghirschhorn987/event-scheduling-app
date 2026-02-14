@@ -3,6 +3,7 @@ steps:
   args: [
     'build',
     '--no-cache',
+    '--build-arg', 'CACHEBUST=$BUILD_ID',
     '--build-arg', 'VITE_SUPABASE_URL=$_VITE_SUPABASE_URL',
     '--build-arg', 'VITE_SUPABASE_ANON_KEY=$_VITE_SUPABASE_ANON_KEY',
     '--build-arg', 'VITE_USE_MOCK_AUTH=$_VITE_USE_MOCK_AUTH',
