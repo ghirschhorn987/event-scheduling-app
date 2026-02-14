@@ -28,7 +28,7 @@ done
 
 PROJECT_ID="event-scheduler-app-486106"
 REGION="us-central1"
-SERVICE_NAME="event-scheduler"
+SERVICE_NAME="event-scheduling-app"
 
 echo "Deploying to Project: $PROJECT_ID"
 

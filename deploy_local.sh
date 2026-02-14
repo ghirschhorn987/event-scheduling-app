@@ -10,7 +10,7 @@ set +o allexport
 
 # Configuration
 PROJECT_ID="event-scheduler-app-486106"
-SERVICE_NAME="event-scheduler"
+SERVICE_NAME="event-scheduling-app"
 REGION="us-central1"
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
 TIMESTAMP=$(date +%s)
