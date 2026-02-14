@@ -1,0 +1,46 @@
+steps:
+# Step 1: Build the Docker image with a unique tag
+- name: 'gcr.io/cloud-builders/docker'
+  args: [
+    'build',
+    '--no-cache',
+    '--pull',
+    '--build-arg', 'CACHEBUST=$BUILD_ID',
+    '--build-arg', 'VITE_SUPABASE_URL=$_VITE_SUPABASE_URL',
+    '--build-arg', 'VITE_SUPABASE_ANON_KEY=$_VITE_SUPABASE_ANON_KEY',
+    '--build-arg', 'VITE_USE_MOCK_AUTH=$_VITE_USE_MOCK_AUTH',
+    '-t', 'gcr.io/$PROJECT_ID/$_SERVICE_NAME:$BUILD_ID',
+    '-t', 'gcr.io/$PROJECT_ID/$_SERVICE_NAME:latest',
+    '.'
+  ]
+
+# Step 2: Push the image
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'gcr.io/$PROJECT_ID/$_SERVICE_NAME:$BUILD_ID']
+
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'gcr.io/$PROJECT_ID/$_SERVICE_NAME:latest']
+
+# Deploy to Cloud Run using the specific build ID tag
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
+  args:
+  - 'run'
+  - 'deploy'
+  - '$_SERVICE_NAME'
+  - '--image=gcr.io/$PROJECT_ID/$_SERVICE_NAME:$BUILD_ID'
+  - '--region=$_REGION'
+  - '--platform=managed'
+  - '--allow-unauthenticated'
+
+images:
+- 'gcr.io/$PROJECT_ID/$_SERVICE_NAME:$BUILD_ID'
+- 'gcr.io/$PROJECT_ID/$_SERVICE_NAME:latest'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _SERVICE_NAME: event-scheduler
+  _REGION: us-central1
