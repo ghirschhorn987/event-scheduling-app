@@ -371,7 +371,7 @@ export default function Dashboard({ session }) {
                         {/* Lists Display */}
                         <div className="space-y-4">
                             <div className="bg-slate-800 p-4 rounded shadow">
-                                <h3 className="font-bold border-b pb-2 mb-2">Main Roster</h3>
+                                <h3 className="font-bold border-b pb-2 mb-2">Signed Up</h3>
                                 <ul>
                                     {eventList
                                         .sort((a, b) => (a.sequence_number || 9999) - (b.sequence_number || 9999))

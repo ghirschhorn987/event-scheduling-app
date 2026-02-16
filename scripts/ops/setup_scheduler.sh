@@ -3,11 +3,11 @@ set -e
 set -x
 
 # Configuration
-SERVICE_NAME="event-scheduler"
+SERVICE_NAME="event-scheduling-app"
 REGION="us-central1"
 JOB_NAME="trigger-event-scheduling"
 SCHEDULE="*/5 * * * *"  # Every 5 minutes
-URI="https://event-scheduler-113221755789.us-central1.run.app/api/schedule" # Check URL after deployment
+URI="https://event-scheduling-app-5tmrmggroa-uc.a.run.app/api/schedule" # Check URL after deployment
 
 # Ensure CRON_SECRET is available
 if [ -z "$CRON_SECRET" ]; then

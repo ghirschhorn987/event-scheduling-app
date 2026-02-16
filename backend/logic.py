@@ -237,3 +237,24 @@ def promote_from_holding(queue, current_roster_count, max_signups, current_waitl
         })
         
     return updates
+
+
+def resequence_holding(queue):
+    """
+    Takes a randomized queue of users and assigns them new sequence numbers
+    keeping them in WAITLIST_HOLDING.
+    
+    Returns a list of dicts:
+    [
+        {"id": user_id, "list_type": "WAITLIST_HOLDING", "sequence_number": 1},
+        ...
+    ]
+    """
+    updates = []
+    for i, user in enumerate(queue):
+        updates.append({
+            "id": user['id'],
+            "list_type": "WAITLIST_HOLDING",
+            "sequence_number": i + 1
+        })
+    return updates

@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from db import supabase
 from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate, GroupMemberAction, GroupMembersAction, UserGroupsUpdate, EventTypeCreate, EventTypeUpdate
-from logic import enrich_event, randomize_holding_queue, promote_from_holding, check_signup_eligibility, determine_event_status
+from logic import enrich_event, randomize_holding_queue, promote_from_holding, check_signup_eligibility, determine_event_status, resequence_holding
 
 app = FastAPI()
 
@@ -896,9 +896,9 @@ async def trigger_schedule(request: Request):
         # This ensures that if the process fails mid-way, the status remains in the old state (e.g. PRELIMINARY_ORDERING).
         # The next Cron run will see the old state + current time and try again.
         
-        if target_status == "FINAL_ORDERING" and current_status != "FINAL_ORDERING":
-            # 1. Process Holding Queue
-            print(f"Processing Holding Queue for Event {event['id']}...")
+        if target_status == "PRELIMINARY_ORDERING" and current_status != "PRELIMINARY_ORDERING":
+            # 1. Enter Preliminary Ordering: Randomize Holding Queue & Assign Sequence
+            print(f"Entering Preliminary Ordering for Event {event['id']}: Randomizing Holding Queue...")
             
             holding_res = supabase.table("event_signups")\
                 .select("*")\
@@ -909,9 +909,65 @@ async def trigger_schedule(request: Request):
             holding_users = holding_res.data
             
             if holding_users:
-                # A. Randomize / Sort
-                # Note: logic.randomize_holding_queue handles Tier 2/3 randomization
+                # A. Randomize (Tier 2/3 logic)
                 queue = randomize_holding_queue(holding_users)
+                
+                # B. Assign Sequence Numbers (But keep in WAITLIST_HOLDING)
+                updates = resequence_holding(queue)
+                
+                 # C. Execute Moves (Atomic Batch via RPC)
+                update_list = []
+                for update in updates:
+                    update_list.append({
+                        "id": str(update["id"]),
+                        "list_type": update["list_type"],
+                        "sequence_number": update["sequence_number"]
+                    })
+                
+                print(f"Executing RPC for Preliminary Randomization ({len(update_list)} updates)...")
+                
+                try:
+                    rpc_res = supabase.rpc("update_event_status_batch", {
+                        "p_event_id": str(event["id"]),
+                        "p_updates": update_list,
+                        "p_final_status": target_status
+                    }).execute()
+                    
+                    print(f"RPC Result: {rpc_res.data}")
+                    processed_count += 1
+                    
+                except Exception as rpc_e:
+                    print(f"CRITICAL: RPC Failed for Event {event['id']}: {rpc_e}")
+                    continue
+            else:
+                 # No one in holding? Just update status.
+                 try:
+                    supabase.rpc("update_event_status_batch", {
+                        "p_event_id": str(event["id"]),
+                        "p_updates": [],
+                        "p_final_status": target_status
+                    }).execute()
+                    processed_count += 1
+                 except Exception as e:
+                    print(f"Error updating status to PRELIMINARY for {event['id']}: {e}")
+
+        elif target_status == "FINAL_ORDERING" and current_status != "FINAL_ORDERING":
+            # 2. Enter Final Ordering: Lock in placements
+            # FETCH ORDERED BY SEQUENCE (Respecting the Preliminary Randomization)
+            print(f"Entering Final Ordering for Event {event['id']}: Promoting from Holding...")
+            
+            holding_res = supabase.table("event_signups")\
+                .select("*")\
+                .eq("event_id", event["id"])\
+                .eq("list_type", "WAITLIST_HOLDING")\
+                .order("sequence_number", desc=False)\
+                .execute()
+                
+            holding_users = holding_res.data
+            
+            if holding_users:
+                # Do NOT randomize again. Used established order.
+                queue = holding_users
                 
                 # B. Get current counts
                 roster_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", event["id"]).eq("list_type", "EVENT").execute()
@@ -932,7 +988,7 @@ async def trigger_schedule(request: Request):
                         "sequence_number": update["sequence_number"]
                     })
                 
-                print(f"Executing RPC update_event_status_batch for {len(update_list)} updates...")
+                print(f"Executing RPC for Final Promotion ({len(update_list)} updates)...")
                 
                 try:
                     rpc_res = supabase.rpc("update_event_status_batch", {
@@ -948,9 +1004,20 @@ async def trigger_schedule(request: Request):
                 except Exception as rpc_e:
                     print(f"CRITICAL: RPC Failed for Event {event['id']}: {rpc_e}")
                     continue
+            else:
+                 # No one in holding? Just update status.
+                 try:
+                    supabase.rpc("update_event_status_batch", {
+                        "p_event_id": str(event["id"]),
+                        "p_updates": [],
+                        "p_final_status": target_status
+                    }).execute()
+                    processed_count += 1
+                 except Exception as e:
+                    print(f"Error updating status to FINAL for {event['id']}: {e}")
 
         else:
-            # 2. Update Status (Simple Transition)
+            # 3. Simple Transition (e.g. NOT_YET_OPEN -> OPEN_FOR_ROSTER)
             # Use RPC ensuring it is transactional even if just one update
             print(f"Executing RPC update_event_status_batch (Status Only update)...")
             try:
