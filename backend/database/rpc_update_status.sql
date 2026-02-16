@@ -30,7 +30,7 @@ BEGIN
         FOR update_item IN SELECT * FROM jsonb_array_elements(p_updates)
         LOOP
             v_record_id := (update_item->>'id')::UUID;
-            v_list_type := update_item->>'list_type';
+            v_list_type := (update_item->>'list_type')::list_type;
             v_seq := (update_item->>'sequence_number')::INT;
 
             -- Perform Update
@@ -48,7 +48,7 @@ BEGIN
     -- 3. Update Event Status (if provided)
     IF p_final_status IS NOT NULL THEN
         UPDATE events
-        SET status = p_final_status
+        SET status = p_final_status::event_status
         WHERE id = p_event_id;
     END IF;
 

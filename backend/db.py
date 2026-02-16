@@ -2,7 +2,7 @@ from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 # Prioritize Service Role Key for Admin operations
 url: str = os.environ.get("SUPABASE_URL")

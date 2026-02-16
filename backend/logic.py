@@ -232,6 +232,7 @@ def promote_from_holding(queue, current_roster_count, max_signups, current_waitl
             
         updates.append({
             "id": signup_id,
+            "user_id": user.get('user_id'),
             "list_type": new_list,
             "sequence_number": new_seq
         })
@@ -254,6 +255,7 @@ def resequence_holding(queue):
     for i, user in enumerate(queue):
         updates.append({
             "id": user['id'],
+            "user_id": user.get('user_id'),
             "list_type": "WAITLIST_HOLDING",
             "sequence_number": i + 1
         })

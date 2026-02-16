@@ -920,6 +920,8 @@ async def trigger_schedule(request: Request):
                 for update in updates:
                     update_list.append({
                         "id": str(update["id"]),
+                        "event_id": str(event["id"]),
+                        "user_id": str(update["user_id"]),
                         "list_type": update["list_type"],
                         "sequence_number": update["sequence_number"]
                     })
@@ -927,26 +929,23 @@ async def trigger_schedule(request: Request):
                 print(f"Executing RPC for Preliminary Randomization ({len(update_list)} updates)...")
                 
                 try:
-                    rpc_res = supabase.rpc("update_event_status_batch", {
-                        "p_event_id": str(event["id"]),
-                        "p_updates": update_list,
-                        "p_final_status": target_status
-                    }).execute()
+                    # Direct Update: Upsert list changes then update status
+                    if update_list:
+                        print(f"Executing Batch Upsert for {len(update_list)} records...")
+                        supabase.table("event_signups").upsert(update_list).execute()
                     
-                    print(f"RPC Result: {rpc_res.data}")
+                    print(f"Updating Event Status to {target_status}...")
+                    supabase.table("events").update({"status": target_status}).eq("id", event["id"]).execute()
+                    
                     processed_count += 1
                     
-                except Exception as rpc_e:
-                    print(f"CRITICAL: RPC Failed for Event {event['id']}: {rpc_e}")
+                except Exception as db_e:
+                    print(f"CRITICAL: DB Update Failed for Event {event['id']}: {db_e}")
                     continue
             else:
                  # No one in holding? Just update status.
                  try:
-                    supabase.rpc("update_event_status_batch", {
-                        "p_event_id": str(event["id"]),
-                        "p_updates": [],
-                        "p_final_status": target_status
-                    }).execute()
+                    supabase.table("events").update({"status": target_status}).eq("id", event["id"]).execute()
                     processed_count += 1
                  except Exception as e:
                     print(f"Error updating status to PRELIMINARY for {event['id']}: {e}")
@@ -984,6 +983,8 @@ async def trigger_schedule(request: Request):
                 for update in updates:
                     update_list.append({
                         "id": str(update["id"]),
+                        "event_id": str(event["id"]),
+                        "user_id": str(update["user_id"]),
                         "list_type": update["list_type"],
                         "sequence_number": update["sequence_number"]
                     })
@@ -991,27 +992,24 @@ async def trigger_schedule(request: Request):
                 print(f"Executing RPC for Final Promotion ({len(update_list)} updates)...")
                 
                 try:
-                    rpc_res = supabase.rpc("update_event_status_batch", {
-                        "p_event_id": str(event["id"]),
-                        "p_updates": update_list,
-                        "p_final_status": target_status
-                    }).execute()
+                    # Direct Update: Upsert list changes then update status
+                    if update_list:
+                        print(f"Executing Batch Upsert for {len(update_list)} records...")
+                        supabase.table("event_signups").upsert(update_list).execute()
+                        
+                    print(f"Updating Event Status to {target_status}...")
+                    supabase.table("events").update({"status": target_status}).eq("id", event["id"]).execute()
                     
-                    print(f"RPC Result: {rpc_res.data}")
                     processed_count += 1
                     promoted_count += len(update_list)
                     
-                except Exception as rpc_e:
-                    print(f"CRITICAL: RPC Failed for Event {event['id']}: {rpc_e}")
-                    continue
+                except Exception as db_e:
+                     print(f"CRITICAL: DB Update Failed for Event {event['id']}: {db_e}")
+                     continue
             else:
                  # No one in holding? Just update status.
                  try:
-                    supabase.rpc("update_event_status_batch", {
-                        "p_event_id": str(event["id"]),
-                        "p_updates": [],
-                        "p_final_status": target_status
-                    }).execute()
+                    supabase.table("events").update({"status": target_status}).eq("id", event["id"]).execute()
                     processed_count += 1
                  except Exception as e:
                     print(f"Error updating status to FINAL for {event['id']}: {e}")
@@ -1019,13 +1017,9 @@ async def trigger_schedule(request: Request):
         else:
             # 3. Simple Transition (e.g. NOT_YET_OPEN -> OPEN_FOR_ROSTER)
             # Use RPC ensuring it is transactional even if just one update
-            print(f"Executing RPC update_event_status_batch (Status Only update)...")
+            print(f"Executing Direct Update (Status Only update)...")
             try:
-                supabase.rpc("update_event_status_batch", {
-                    "p_event_id": str(event["id"]),
-                    "p_updates": [], # Empty list
-                    "p_final_status": target_status
-                }).execute()
+                supabase.table("events").update({"status": target_status}).eq("id", event["id"]).execute()
                 processed_count += 1
             except Exception as e:
                 print(f"Error updating status for {event['id']}: {e}")
