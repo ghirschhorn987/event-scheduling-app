@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from db import supabase
 from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate, GroupMemberAction, GroupMembersAction, UserGroupsUpdate, EventTypeCreate, EventTypeUpdate
-from logic import enrich_event, randomize_holding_queue, promote_from_holding, check_signup_eligibility, determine_event_status, resequence_holding
+from logic import enrich_event, randomize_holding_queue, promote_from_holding, check_signup_eligibility, determine_event_status, resequence_holding, parse_interval_to_minutes
 
 app = FastAPI()
 
@@ -480,6 +480,7 @@ async def list_event_types(request: Request):
             "reserve_first_priority_user_group_name": row.get("reserve_first_priority_user_group", {}).get("name") if row.get("reserve_first_priority_user_group") else None,
             "reserve_second_priority_user_group_id": row.get("reserve_second_priority_user_group", {}).get("id") if row.get("reserve_second_priority_user_group") else None,
             "reserve_second_priority_user_group_name": row.get("reserve_second_priority_user_group", {}).get("name") if row.get("reserve_second_priority_user_group") else None,
+            "duration_minutes": parse_interval_to_minutes(row.get("duration"))
         }
         data.append(event_type)
     
@@ -494,6 +495,11 @@ async def create_event_type(body: EventTypeCreate, request: Request):
     
     try:
         payload = body.model_dump()
+        # Convert duration_minutes to Postgres Interval string
+        if "duration_minutes" in payload:
+            payload["duration"] = f"{payload['duration_minutes']} minutes"
+            del payload["duration_minutes"]
+            
         res = supabase.table("event_types").insert(payload).execute()
         
         if not res.data:
@@ -517,6 +523,11 @@ async def update_event_type(event_type_id: str, body: EventTypeUpdate, request: 
         
         if not payload:
             raise HTTPException(status_code=400, detail="No fields to update")
+
+        # Convert duration_minutes to Postgres Interval string
+        if "duration_minutes" in payload:
+             payload["duration"] = f"{payload['duration_minutes']} minutes"
+             del payload["duration_minutes"]
         
         res = supabase.table("event_types").update(payload).eq("id", event_type_id).execute()
         
@@ -550,6 +561,117 @@ async def delete_event_type(event_type_id: str, request: Request):
     except Exception as e:
         print(f"Error deleting event type: {e}")
         raise HTTPException(status_code=400, detail=f"Failed to delete event type: {str(e)}")
+
+# --- New Admin Event Management Endpoints ---
+
+@app.get("/api/admin/events")
+async def list_admin_events(request: Request):
+    """
+    Fetch all events for admin management (including cancelled/finished).
+    """
+    await get_current_admin(request)
+    
+    # Fetch events joined with event_types for name
+    # Filtering: We might want pagination later, but for now fetch all (or limit 100)
+    # limit=100 for now to be safe
+    try:
+        res = supabase.table("events").select("*, event_types(name)").order("event_date", desc=True).limit(100).execute()
+        
+        data = []
+        for row in res.data:
+            event = {
+                "id": row["id"],
+                "event_type_id": row["event_type_id"],
+                "event_type_name": row.get("event_types", {}).get("name") if row.get("event_types") else "Unknown",
+                "event_date": row["event_date"],
+                "status": row["status"],
+                "status_determinant": row.get("status_determinant", "AUTOMATIC"),
+                "duration": row.get("duration"),
+            }
+            data.append(event)
+            
+        return {"status": "success", "data": data}
+    except Exception as e:
+        print(f"Error listing admin events: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to list events: {e}")
+
+from models import EventStatusUpdate
+
+@app.put("/api/admin/events/{event_id}/status")
+async def update_event_status(event_id: str, body: EventStatusUpdate, request: Request):
+    """
+    Manually update event status and determinant.
+    """
+    await get_current_admin(request)
+    
+    try:
+        payload = {
+            "status": body.status,
+            "status_determinant": body.status_determinant
+        }
+        
+        res = supabase.table("events").update(payload).eq("id", event_id).execute()
+        
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Event not found")
+            
+        return {"status": "success", "message": "Event status updated", "data": res.data[0]}
+    except Exception as e:
+        print(f"Error updating event status: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to update status: {e}")
+
+@app.get("/api/admin/cancelled_dates")
+async def list_cancelled_dates(request: Request):
+    """
+    List all future cancelled dates.
+    """
+    await get_current_admin(request)
+    
+    try:
+        # Fetch dates >= today
+        today = datetime.now().strftime("%Y-%m-%d")
+        res = supabase.table("cancelled_dates").select("*").gte("date", today).order("date").execute()
+        return {"status": "success", "data": res.data}
+    except Exception as e:
+        print(f"Error fetching cancelled dates: {e}")
+        # Identify if table exists error? For now just 500
+        raise HTTPException(status_code=500, detail=f"Failed to fetch cancelled dates: {e}")
+
+from models import CancelledDate
+
+@app.post("/api/admin/cancelled_dates")
+async def add_cancelled_date(body: CancelledDate, request: Request):
+    """
+    Add a date to the blocklist.
+    """
+    await get_current_admin(request)
+    
+    try:
+        payload = {
+            "date": body.date,
+            "reason": body.reason
+        }
+        res = supabase.table("cancelled_dates").insert(payload).execute()
+        return {"status": "success", "data": res.data[0]}
+    except Exception as e:
+        print(f"Error adding cancelled date: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to add date: {e}")
+
+@app.delete("/api/admin/cancelled_dates/{date_str}")
+async def remove_cancelled_date(date_str: str, request: Request):
+    """
+    Remove a date from the blocklist.
+    """
+    await get_current_admin(request)
+    
+    try:
+        res = supabase.table("cancelled_dates").delete().eq("date", date_str).execute()
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Date not found in blocklist")
+        return {"status": "success", "message": "Date removed"}
+    except Exception as e:
+         print(f"Error removing cancelled date: {e}")
+         raise HTTPException(status_code=400, detail=f"Failed to remove date: {e}")
 
 @app.post("/api/signup")
 async def signup(body: SignupRequest, request: Request):

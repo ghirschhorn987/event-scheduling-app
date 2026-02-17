@@ -37,8 +37,8 @@ class EventType(BaseModel):
     initial_reserve_scheduling_minutes: int
     final_reserve_scheduling_minutes: int
     roster_user_group: Optional[str] = None
-    reserve_first_priority_user_group: Optional[str] = None
     reserve_second_priority_user_group: Optional[str] = None
+    duration_minutes: int = 120 # Default 2 hours
 
 class Event(BaseModel):
     id: str
@@ -46,10 +46,10 @@ class Event(BaseModel):
     event_date: datetime
     status: str
     status_determinant: EventStatusDeterminant = EventStatusDeterminant.AUTOMATIC
-    duration: Optional[str] = None # Pydantic will serialize INTERVAL/timedelta to ISO string or similar
-    # Enriched fields (joined from EventType for API response)
+    # Enriched fields (joined from EventType for API result)
     name: Optional[str] = None
     max_signups: Optional[int] = None
+    duration: Optional[str] = None # Enriched from EventType
     # Calculated timestamps based on event_date - minutes
     roster_sign_up_open: Optional[datetime] = None
     reserve_sign_up_open: Optional[datetime] = None
@@ -93,6 +93,7 @@ class EventTypeCreate(BaseModel):
     roster_user_group: Optional[str] = None  # UUID
     reserve_first_priority_user_group: Optional[str] = None  # UUID
     reserve_second_priority_user_group: Optional[str] = None  # UUID
+    duration_minutes: int = 120
 
 class EventTypeUpdate(BaseModel):
     name: Optional[str] = None
@@ -107,3 +108,12 @@ class EventTypeUpdate(BaseModel):
     roster_user_group: Optional[str] = None
     reserve_first_priority_user_group: Optional[str] = None
     reserve_second_priority_user_group: Optional[str] = None
+    duration_minutes: Optional[int] = None
+
+class CancelledDate(BaseModel):
+    date: str # YYYY-MM-DD
+    reason: Optional[str] = None
+
+class EventStatusUpdate(BaseModel):
+    status: str
+    status_determinant: str # MANUAL or AUTOMATIC

@@ -31,6 +31,11 @@ def enrich_event(event_data, now=None):
     # Calculate timestamps
     # Timedeltas in minutes
     event_data["roster_sign_up_open"] = event_date - timedelta(minutes=event_type["roster_sign_up_open_minutes"])
+    
+    # Extract duration from event_type (join)
+    duration_str = event_type.get("duration")
+    event_data["duration"] = duration_str
+    
     event_data["reserve_sign_up_open"] = event_date - timedelta(minutes=event_type["reserve_sign_up_open_minutes"])
     
     event_data["initial_reserve_scheduling"] = event_date - timedelta(minutes=event_type["initial_reserve_scheduling_minutes"])
@@ -57,6 +62,40 @@ def enrich_event(event_data, now=None):
 
     return event_data
 
+def parse_interval_to_minutes(interval_str):
+    """
+    Parses a Postgres interval string (e.g., '02:00:00' or 'PT2H') to total minutes.
+    """
+    if not interval_str:
+        return 120 # Default fallback
+    
+    try:
+        # Try HH:MM:SS format (Postgres default)
+        parts = str(interval_str).split(':')
+        if len(parts) == 3:
+            h, m, s = map(float, parts)
+            return int(h * 60 + m + s / 60)
+        
+        # Try simplistic ISO (PT2H, PT90M)
+        # This is not a full parser, just common cases
+        s = str(interval_str).upper()
+        if s.startswith('PT'):
+            minutes = 0
+            if 'H' in s:
+                h_part = s.split('H')[0].replace('PT', '')
+                minutes += float(h_part) * 60
+                if 'M' in s:
+                     m_part = s.split('H')[1].split('M')[0]
+                     minutes += float(m_part)
+            elif 'M' in s:
+                m_part = s.split('M')[0].replace('PT', '')
+                minutes += float(m_part)
+            return int(minutes)
+            
+    except Exception:
+        pass
+        
+    return 120 # Default
 
 def determine_event_status(event, now):
     """
@@ -88,6 +127,9 @@ def determine_event_status(event, now):
     # Assuming event_date is start time
     event_start = to_dt(event.get("event_date"))
     
+    duration_min = parse_interval_to_minutes(event.get("duration"))
+    event_end = event_start + timedelta(minutes=duration_min)
+    
     if now < roster_open:
         return "NOT_YET_OPEN"
     elif now < reserve_open:
@@ -97,6 +139,8 @@ def determine_event_status(event, now):
     elif now < final_scheduling:
         return "PRELIMINARY_ORDERING"
     elif now < event_start:
+        return "FINAL_ORDERING"
+    elif now < event_end:
         return "FINAL_ORDERING"
     else:
         return "FINISHED"

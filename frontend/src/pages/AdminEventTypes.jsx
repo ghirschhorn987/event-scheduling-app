@@ -27,7 +27,8 @@ const AdminEventTypes = ({ session }) => {
         final_reserve_scheduling_minutes: 180,
         roster_user_group: '',
         reserve_first_priority_user_group: '',
-        reserve_second_priority_user_group: ''
+        reserve_second_priority_user_group: '',
+        duration_minutes: 120
     })
 
     useEffect(() => {
@@ -76,7 +77,8 @@ const AdminEventTypes = ({ session }) => {
             final_reserve_scheduling_minutes: 180,
             roster_user_group: '',
             reserve_first_priority_user_group: '',
-            reserve_second_priority_user_group: ''
+            reserve_second_priority_user_group: '',
+            duration_minutes: 120
         })
         setShowModal(true)
     }
@@ -95,7 +97,8 @@ const AdminEventTypes = ({ session }) => {
             final_reserve_scheduling_minutes: eventType.final_reserve_scheduling_minutes,
             roster_user_group: eventType.roster_user_group_id || '',
             reserve_first_priority_user_group: eventType.reserve_first_priority_user_group_id || '',
-            reserve_second_priority_user_group: eventType.reserve_second_priority_user_group_id || ''
+            reserve_second_priority_user_group: eventType.reserve_second_priority_user_group_id || '',
+            duration_minutes: eventType.duration_minutes || 120
         })
         setShowModal(true)
     }
@@ -209,6 +212,7 @@ const AdminEventTypes = ({ session }) => {
                                 <th className="p-4 border-b border-slate-700">Name</th>
                                 <th className="p-4 border-b border-slate-700">Day</th>
                                 <th className="p-4 border-b border-slate-700">Time</th>
+                                <th className="p-4 border-b border-slate-700 text-center">Dur</th>
                                 <th className="p-4 border-b border-slate-700 text-center">Max</th>
                                 <th className="p-4 border-b border-slate-700">Roster Group</th>
                                 <th className="p-4 border-b border-slate-700">Reserve 1st</th>
@@ -235,6 +239,9 @@ const AdminEventTypes = ({ session }) => {
                                         <td className="p-4">
                                             <div className="text-gray-300 font-mono text-sm">{type.time_of_day}</div>
                                             <div className="text-gray-500 text-xs">{type.time_zone}</div>
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            <span className="text-gray-300 text-sm">{type.duration_minutes}m</span>
                                         </td>
                                         <td className="p-4 text-center">
                                             <span className="bg-blue-600 text-white px-2.5 py-1 rounded-full text-xs font-bold">
@@ -352,6 +359,20 @@ const AdminEventTypes = ({ session }) => {
                                         type="number"
                                         value={formData.max_signups}
                                         onChange={(e) => setFormData({ ...formData, max_signups: parseInt(e.target.value) })}
+                                        required
+                                        min="1"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-300 mb-2">Duration (minutes) *</label>
+                                    <input
+                                        type="number"
+                                        value={formData.duration_minutes}
+                                        onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })}
                                         required
                                         min="1"
                                         className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-blue-500 outline-none"

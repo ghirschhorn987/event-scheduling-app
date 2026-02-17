@@ -11,9 +11,6 @@ Based on a review of `_gary_scratch` documents (`ideas.md`, `ideas2.md`, `scratc
 *   **Notification System**:
     *   No emails are triggered by the scheduler (for "Open for Roster", "Open for Reserves", "Preliminary Ordering", "Final Ordering", or "Late-Stage Changes").
     *   `email_service.py` exists but is only used for registration requests/approvals, not event lifecycle.
-*   **Event Management Screen**:
-    *   There is no Admin UI to list all events, cancel them, or override their statuses.
-    *   No "Blackout Dates" configuration interface.
 *   **Out-of-Town Guest Feature**:
     *   No UI for adding guests.
     *   No backend logic for "dummy profiles" or guest placeholders.
@@ -22,6 +19,12 @@ Based on a review of `_gary_scratch` documents (`ideas.md`, `ideas2.md`, `scratc
     *   The `User Group Type` column (Event Eligibility, Application Role, etc.) is missing from the `user_groups` table schema.
 *   **Specific Reserve Groups**:
     *   The database migration `refactor_user_management.sql` seeds "Primary" and "Secondary" groups, but does not create the specific "Sunday Reserves", "Tuesday Reserves", or "Thursday Reserves" groups mentioned in the plan.
+*   **Admin Name Change**:
+    *   Ability for admin to change a user's name (not their email).
+*   **Registration Request Management**:
+    *   Ability for admin to delete a pending registration request.
+    *   When deleting, option to remove just the request or also delete the user account (profile and auth user) entirely.
+    *   Ability to filter registration requests by status (to hide processed/junk requests).
 
 ## 2. Partially Implemented
 
@@ -48,6 +51,9 @@ Based on a review of `_gary_scratch` documents (`ideas.md`, `ideas2.md`, `scratc
 
 ## 4. Implemented as Suggested
 
+*   **Event Management Screen**:
+    *   Admin UI (`/admin/events`) created to list events and allow manual status/cancellation overrides.
+    *   Includes "Cancelled Dates" blocklist management (backend table pending SQL execution).
 *   **Event Status Enum**: The `EventStatus` enum in `models.py` matches the scratch file definitions (`NOT_YET_OPEN` ... `FINISHED`, `CANCELLED`).
 *   **Signup Eligibility Logic**: `check_signup_eligibility` in `logic.py` correctly implements the rules.
 *   **Randomization Logic**: `randomize_holding_queue` in `logic.py` correctly implements the tiered randomization.

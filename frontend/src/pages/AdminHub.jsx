@@ -63,6 +63,22 @@ const AdminHub = ({ session }) => {
                     </div>
                 </Link>
 
+                {/* Manage Events Card */}
+                <Link to="/admin/events" className="admin-card group">
+                    <div className="p-6 bg-slate-800 rounded-xl border border-slate-700 hover:border-pink-500 transition-all duration-300 shadow-lg hover:shadow-pink-500/10 h-full flex flex-col">
+                        <div className="w-12 h-12 bg-pink-500/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-pink-500/20 transition-colors">
+                            <svg className="w-6 h-6 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-bold text-white mb-2">Manage Events</h2>
+                        <p className="text-gray-400 flex-grow">View all events, manually override statuses, and manage cancelled dates.</p>
+                        <div className="mt-4 text-pink-400 font-semibold flex items-center gap-2 group-hover:translate-x-1 transition-transform">
+                            Manage Events <span>&rarr;</span>
+                        </div>
+                    </div>
+                </Link>
+
                 {/* Event Types Card */}
                 <Link to="/admin/event-types" className="admin-card group">
                     <div className="p-6 bg-slate-800 rounded-xl border border-slate-700 hover:border-orange-500 transition-all duration-300 shadow-lg hover:shadow-orange-500/10 h-full flex flex-col">
