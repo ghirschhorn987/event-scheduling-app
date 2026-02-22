@@ -844,49 +844,83 @@ async def remove_signup(body: SignupRequest, request: Request):
 
         # 1. Fetch current signup status BEFORE deleting
         current_signup_res = supabase.table("event_signups")\
-            .select("list_type")\
+            .select("*")\
             .eq("event_id", body.event_id)\
             .eq("user_id", target_profile_id)\
             .maybe_single()\
             .execute()
             
-        current_list_type = current_signup_res.data["list_type"] if current_signup_res.data else None
+        if not current_signup_res.data:
+            return {"status": "success", "message": "Signup not found (already removed?)"}
 
-        # 2. Delete the signup
-        res = supabase.table("event_signups").delete().eq("event_id", body.event_id).eq("user_id", target_profile_id).execute()
+        current_data = current_signup_res.data
+        current_list_type = current_data["list_type"]
+        current_seq = current_data["sequence_number"]
         
-        # 3. Auto-Promote if needed
-        # If the user was in the EVENT list, we should promote the first person from WAITLIST.
-        # We explicitly IGNORE "WAITLIST_HOLDING" - they are not ready for promotion yet.
-        if current_list_type == "EVENT":
-            print(f"User removed from EVENT roster. checking for waitlist promotion...")
+        # 2. Delete the signup
+        supabase.table("event_signups").delete().eq("id", current_data["id"]).execute()
+        
+        # 3. Decrement sequences for the same list
+        # Find all users in same list with higher sequence
+        to_update_res = supabase.table("event_signups")\
+            .select("id, sequence_number")\
+            .eq("event_id", body.event_id)\
+            .eq("list_type", current_list_type)\
+            .gt("sequence_number", current_seq)\
+            .execute()
             
-            # Find the highest priority waitlist member
-            # Sorted by sequence_number ascending (1, 2, 3...)
-            # If sequence is null/zero, fall back to created_at
-            next_up_res = supabase.table("event_signups")\
-                .select("*")\
-                .eq("event_id", body.event_id)\
-                .eq("list_type", "WAITLIST")\
-                .order("sequence_number", desc=False)\
-                .order("created_at", desc=False)\
-                .limit(1)\
-                .execute()
+        # Bulk update or loop? Supabase doesn't support 'sequence_number - 1' update easily via client
+        for row in to_update_res.data:
+            new_seq = row['sequence_number'] - 1
+            supabase.table("event_signups").update({"sequence_number": new_seq}).eq("id", row['id']).execute()
+            
+        # 4. Auto-Promote if needed (Steady State)
+        # If removed from EVENT, and Roster has space, promote check.
+        if current_list_type == "EVENT":
+            # Check capacity
+            event = fetch_event(body.event_id)
+            current_roster_count = fetch_counts(body.event_id)
+            
+            if current_roster_count < event['max_signups']:
+                print(f"Space opened in Roster ({current_roster_count} < {event['max_signups']}). Checking Waitlist...")
                 
-            if next_up_res.data:
-                next_person = next_up_res.data[0]
-                print(f"Promoting user {next_person['user_id']} from WAITLIST to EVENT")
-                
-                # Get current max sequence for EVENT? Or just append?
-                # Actually, sequence in EVENT list matters less for order, but let's be tidy.
-                # Just appending is fine.
-                
-                # Update them to EVENT
-                supabase.table("event_signups").update({
-                    "list_type": "EVENT"
-                }).eq("id", next_person["id"]).execute()
-                
-                # Notification logic would go here (Notify promoted user)
+                # Fetch Top Waitlist (Seq 1)
+                # Note: We expect standard Waitlist to start at 1 and be contiguous
+                next_up_res = supabase.table("event_signups")\
+                    .select("*")\
+                    .eq("event_id", body.event_id)\
+                    .eq("list_type", "WAITLIST")\
+                    .order("sequence_number", desc=False)\
+                    .limit(1)\
+                    .execute()
+                    
+                if next_up_res.data:
+                    next_person = next_up_res.data[0]
+                    print(f"Promoting user {next_person['user_id']} from WAITLIST to EVENT")
+                    
+                    # New Sequence = current_roster_count + 1 (since we just decremented everyone, count matches end)
+                    # Actually roster count includes the new vacancy? No, fetch_counts counts rows.
+                    # We deleted one. So if max=3, we had 3, deleted -> 2.
+                    # New person becomes 3. 
+                    new_roster_seq = current_roster_count + 1
+                    
+                    # Update List Type and Sequence
+                    supabase.table("event_signups").update({
+                        "list_type": "EVENT",
+                        "sequence_number": new_roster_seq
+                    }).eq("id", next_person["id"]).execute()
+                    
+                    # 5. Decrement Waitlist (Since #1 left)
+                    wl_update_res = supabase.table("event_signups")\
+                        .select("id, sequence_number")\
+                        .eq("event_id", body.event_id)\
+                        .eq("list_type", "WAITLIST")\
+                        .gt("sequence_number", 1)\
+                        .execute()
+                        
+                    for row in wl_update_res.data:
+                        new_seq = row['sequence_number'] - 1
+                        supabase.table("event_signups").update({"sequence_number": new_seq}).eq("id", row['id']).execute()
 
         return {"status": "success", "message": "Signup removed"}
     except Exception as e:
