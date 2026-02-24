@@ -11,9 +11,11 @@ __pycache__/
 *$py.class
 venv/
 .venv/
+.venv_temp/
 .pytest_cache/
 
 # IDE
 .vscode/
 .idea/
 backend/static/
+

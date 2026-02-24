@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from db import supabase
-from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate, GroupMemberAction, GroupMembersAction, UserGroupsUpdate, EventTypeCreate, EventTypeUpdate
+from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate, GroupMemberAction, GroupMembersAction, UserGroupsUpdate, UserGroupMetadataUpdate, EventTypeCreate, EventTypeUpdate
 from logic import enrich_event, randomize_holding_queue, promote_from_holding, check_signup_eligibility, determine_event_status, resequence_holding, parse_interval_to_minutes
 
 app = FastAPI()
@@ -202,6 +202,36 @@ async def list_user_groups(request: Request):
             "user_count": count
         })
     return {"status": "success", "data": data}
+
+@app.put("/api/admin/groups/{group_id}")
+async def update_user_group(group_id: str, body: UserGroupMetadataUpdate, request: Request):
+    """
+    Update group metadata (name, description, google_group_id, group_email).
+    """
+    user = await admin_guard(request)
+    
+    update_data = {}
+    if body.name is not None: update_data["name"] = body.name
+    if body.description is not None: update_data["description"] = body.description
+    if body.google_group_id is not None: update_data["google_group_id"] = body.google_group_id
+    if body.group_email is not None: update_data["group_email"] = body.group_email
+
+    if not update_data:
+        return {"status": "success", "message": "No fields to update"}
+
+    try:
+        res = supabase.table("user_groups")\
+            .update(update_data)\
+            .eq("id", group_id)\
+            .execute()
+        
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Group not found")
+            
+        return {"status": "success", "data": res.data[0]}
+    except Exception as e:
+        print(f"Error updating user group: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/admin/groups/{group_id}/members")
 async def list_group_members(group_id: str, request: Request):

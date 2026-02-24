@@ -14,11 +14,29 @@ const AdminGroupDetail = ({ session }) => {
     const [selectedProfileIds, setSelectedProfileIds] = useState([])
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     const [processing, setProcessing] = useState(false)
+    const [isEditingMetadata, setIsEditingMetadata] = useState(false)
+    const [editForm, setEditForm] = useState({
+        name: "",
+        description: "",
+        google_group_id: "",
+        group_email: ""
+    })
 
     useEffect(() => {
         fetchData()
         fetchAllProfiles()
     }, [groupId])
+
+    useEffect(() => {
+        if (group) {
+            setEditForm({
+                name: group.name || "",
+                description: group.description || "",
+                google_group_id: group.google_group_id || "",
+                group_email: group.group_email || ""
+            })
+        }
+    }, [group])
 
     const fetchAllProfiles = async () => {
         try {
@@ -56,6 +74,33 @@ const AdminGroupDetail = ({ session }) => {
             setError(err.message)
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleSaveMetadata = async () => {
+        setProcessing(true)
+        try {
+            const sessionData = await supabase.auth.getSession()
+            const token = sessionData.data.session?.access_token
+
+            const res = await fetch(`/api/admin/groups/${groupId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(editForm)
+            })
+
+            const json = await res.json()
+            if (!res.ok) throw new Error(json.detail || "Failed to update group metadata")
+
+            setIsEditingMetadata(false)
+            await fetchData()
+        } catch (err) {
+            alert(err.message)
+        } finally {
+            setProcessing(false)
         }
     }
 
@@ -131,15 +176,17 @@ const AdminGroupDetail = ({ session }) => {
         <div className="dashboard-container">
             <Header session={session} />
 
-            <div className="admin-header-container mb-6">
-                <Link to="/admin/groups" className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1 mb-2">
-                    <span>&larr;</span> Back to Groups List
-                </Link>
-                <h1 className="text-3xl font-bold flex items-center gap-3">
-                    {group.name}
-                    <span className="text-lg font-normal text-gray-500">Member List</span>
-                </h1>
-                <p className="text-gray-400 mt-1 max-w-2xl">{group.description}</p>
+            <div className="admin-header-container mb-6 flex justify-between items-start">
+                <div>
+                    <Link to="/admin/groups" className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1 mb-2">
+                        <span>&larr;</span> Back to Groups List
+                    </Link>
+                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                        {group.name}
+                        <span className="text-lg font-normal text-gray-500">Member List</span>
+                    </h1>
+                    <p className="text-gray-400 mt-1 max-w-2xl">{group.description}</p>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -191,9 +238,118 @@ const AdminGroupDetail = ({ session }) => {
                     </div>
                 </div>
 
-                {/* Sidebar: Add Member with Searchable Multi-Select */}
+                {/* Sidebar */}
                 <div className="lg:col-span-1">
                     <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl sticky top-24">
+
+                        <div className="mb-6 pb-6 border-b border-slate-700/50">
+                            <div className="flex justify-between items-center mb-4">
+                                <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Group Metadata</h4>
+                                {!isEditingMetadata && (
+                                    <button
+                                        onClick={() => setIsEditingMetadata(true)}
+                                        className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                        Edit
+                                    </button>
+                                )}
+                            </div>
+
+                            {isEditingMetadata ? (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">Group Name</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.name}
+                                            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">Description</label>
+                                        <textarea
+                                            value={editForm.description}
+                                            onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none h-20 resize-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">Google Group ID</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.google_group_id}
+                                            onChange={(e) => setEditForm({ ...editForm, google_group_id: e.target.value })}
+                                            placeholder="e.g. users@skeddle.club"
+                                            className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">Group Email</label>
+                                        <input
+                                            type="email"
+                                            value={editForm.group_email}
+                                            onChange={(e) => setEditForm({ ...editForm, group_email: e.target.value })}
+                                            placeholder="e.g. notify@skeddle.club"
+                                            className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-2 pt-2">
+                                        <button
+                                            onClick={handleSaveMetadata}
+                                            disabled={processing}
+                                            className="flex-1 bg-green-600 hover:bg-green-500 text-white text-xs font-bold py-2 rounded transition-colors disabled:opacity-50"
+                                        >
+                                            {processing ? 'Saving...' : 'Save Changes'}
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setIsEditingMetadata(false)
+                                                // Reset form
+                                                if (group) {
+                                                    setEditForm({
+                                                        name: group.name || "",
+                                                        description: group.description || "",
+                                                        google_group_id: group.google_group_id || "",
+                                                        group_email: group.group_email || ""
+                                                    })
+                                                }
+                                            }}
+                                            disabled={processing}
+                                            className="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-2 rounded transition-colors disabled:opacity-50"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div>
+                                        <div className="text-xs text-gray-500">Google Group ID</div>
+                                        <div className="text-white font-mono text-sm">{group.google_group_id || <span className="text-gray-600 italic">Not Set</span>}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-gray-500">Group Email</div>
+                                        <div className="text-white font-mono text-sm">
+                                            {group.group_email ? (
+                                                <a href={`mailto:${group.group_email}`} className="text-blue-400 hover:text-blue-300 hover:underline">{group.group_email}</a>
+                                            ) : (
+                                                <span className="text-gray-600 italic">Not Set</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-gray-500">Internal ID</div>
+                                        <div className="text-white font-mono text-xs truncate" title={group.id}>{group.id}</div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <h3 className="text-xl font-bold text-white mb-2">Add Members</h3>
                         <p className="text-gray-400 text-sm mb-6">Select users to add to <strong>{group.name}</strong>.</p>
 
@@ -299,20 +455,6 @@ const AdminGroupDetail = ({ session }) => {
                                 onClick={() => setIsDropdownOpen(false)}
                             ></div>
                         )}
-
-                        <div className="mt-8 pt-6 border-t border-slate-700/50">
-                            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Group Metadata</h4>
-                            <div className="space-y-3">
-                                <div>
-                                    <div className="text-xs text-gray-500">Google Group ID</div>
-                                    <div className="text-white font-mono text-sm">{group.google_group_id || 'Not Set'}</div>
-                                </div>
-                                <div>
-                                    <div className="text-xs text-gray-500">Internal ID</div>
-                                    <div className="text-white font-mono text-xs truncate" title={group.id}>{group.id}</div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 

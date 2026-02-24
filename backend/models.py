@@ -80,6 +80,12 @@ class GroupMembersAction(BaseModel):
 class UserGroupsUpdate(BaseModel):
     group_ids: List[str]
 
+class UserGroupMetadataUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    google_group_id: Optional[str] = None
+    group_email: Optional[str] = None
+
 class EventTypeCreate(BaseModel):
     name: str
     day_of_week: int  # 0=Sunday, 6=Saturday

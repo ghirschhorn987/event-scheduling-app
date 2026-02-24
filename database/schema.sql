@@ -8,7 +8,8 @@ CREATE TABLE user_groups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL UNIQUE,
   description TEXT,
-  google_group_id TEXT
+  google_group_id TEXT,
+  group_email TEXT
 );
 
 -- Profiles (Public user data linked to auth.users)

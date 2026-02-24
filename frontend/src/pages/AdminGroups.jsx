@@ -64,6 +64,7 @@ const AdminGroups = ({ session }) => {
                                 <th className="p-4 border-b border-slate-700">Description</th>
                                 <th className="p-4 border-b border-slate-700 text-center">Users</th>
                                 <th className="p-4 border-b border-slate-700">Google Group ID</th>
+                                <th className="p-4 border-b border-slate-700">Group Email</th>
                                 <th className="p-4 border-b border-slate-700 text-right">Actions</th>
                             </tr>
                         </thead>
@@ -86,6 +87,15 @@ const AdminGroups = ({ session }) => {
                                     <td className="p-4">
                                         <div className="font-mono text-xs text-slate-500 uppercase whitespace-nowrap">
                                             {group.google_group_id || <span className="opacity-30 italic">Not Set</span>}
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="text-sm text-slate-300 whitespace-nowrap">
+                                            {group.group_email ? (
+                                                <a href={`mailto:${group.group_email}`} className="text-blue-400 hover:text-blue-300 hover:underline">{group.group_email}</a>
+                                            ) : (
+                                                <span className="opacity-30 italic">Not Set</span>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="p-4 text-right">
