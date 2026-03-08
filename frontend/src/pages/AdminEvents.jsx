@@ -19,6 +19,8 @@ const AdminEvents = ({ session }) => {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [activeTab, setActiveTab] = useState('events') // 'events' or 'blocklist'
+    const [timeFilter, setTimeFilter] = useState('future')
+    const [statusFilter, setStatusFilter] = useState('ALL')
 
     // Blocklist Form
     const [blockDate, setBlockDate] = useState('')
@@ -26,7 +28,7 @@ const AdminEvents = ({ session }) => {
 
     useEffect(() => {
         fetchData()
-    }, [])
+    }, [timeFilter])
 
     const fetchData = async () => {
         setLoading(true)
@@ -36,7 +38,7 @@ const AdminEvents = ({ session }) => {
             const token = sessionData.data.session?.access_token
 
             const [eventsRes, datesRes] = await Promise.all([
-                fetch('/api/admin/events', { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`/api/admin/events?filter=${timeFilter}`, { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch('/api/admin/cancelled_dates', { headers: { 'Authorization': `Bearer ${token}` } })
             ])
 
@@ -170,68 +172,97 @@ const AdminEvents = ({ session }) => {
                     </button>
                 </div>
 
-                {activeTab === 'events' && (
-                    <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm text-gray-400">
-                                <thead className="bg-slate-700/50 text-gray-200 uppercase font-medium">
-                                    <tr>
-                                        <th className="px-6 py-4">Date</th>
-                                        <th className="px-6 py-4">Event Type</th>
-                                        <th className="px-6 py-4">Status</th>
-                                        <th className="px-6 py-4">Mode</th>
-                                        <th className="px-6 py-4">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-700">
-                                    {events.map((event) => (
-                                        <tr key={event.id} className="hover:bg-slate-700/30 transition-colors">
-                                            <td className="px-6 py-4 font-medium text-white">
-                                                {new Date(event.event_date).toLocaleString()}
-                                            </td>
-                                            <td className="px-6 py-4">{event.event_type_name}</td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold ${event.status === 'CANCELLED' ? 'bg-red-500/20 text-red-400' :
-                                                    event.status === 'FINISHED' ? 'bg-gray-500/20 text-gray-400' :
-                                                        'bg-emerald-500/20 text-emerald-400'
-                                                    }`}>
-                                                    {event.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold ${event.status_determinant === 'MANUAL' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'
-                                                    }`}>
-                                                    {event.status_determinant}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 flex items-center gap-2">
-                                                <select
-                                                    className="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white text-xs"
-                                                    value={event.status}
-                                                    onChange={(e) => handleStatusUpdate(event.id, e.target.value)}
-                                                >
-                                                    {EVENT_STATUSES.map(s => (
-                                                        <option key={s} value={s}>{s}</option>
-                                                    ))}
-                                                </select>
-                                                <Link to={`/admin/events/${event.id}`} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs font-medium transition-colors">
-                                                    Manage Users
-                                                </Link>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {events.length === 0 && (
+                {activeTab === 'events' && (() => {
+                    const filteredEvents = events.filter(e => statusFilter === 'ALL' || e.status === statusFilter)
+
+                    return (
+                        <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                            <div className="p-4 border-b border-slate-700 flex flex-wrap gap-4">
+                                <select
+                                    value={timeFilter}
+                                    onChange={(e) => setTimeFilter(e.target.value)}
+                                    className="bg-slate-900 border border-slate-600 outline-none focus:border-blue-500 rounded px-2 py-1 text-white text-sm"
+                                >
+                                    <option value="future">Future Events</option>
+                                    <option value="past">Past Events</option>
+                                    <option value="all">All Events</option>
+                                </select>
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                    className="bg-slate-900 border border-slate-600 outline-none focus:border-blue-500 rounded px-2 py-1 text-white text-sm"
+                                >
+                                    <option value="ALL">All Statuses</option>
+                                    {EVENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm text-gray-400">
+                                    <thead className="bg-slate-700/50 text-gray-200 uppercase font-medium">
                                         <tr>
-                                            <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
-                                                No events found.
-                                            </td>
+                                            <th className="px-6 py-4">Date</th>
+                                            <th className="px-6 py-4">Event Type</th>
+                                            <th className="px-6 py-4">Status</th>
+                                            <th className="px-6 py-4">Mode</th>
+                                            <th className="px-6 py-4">Signups</th>
+                                            <th className="px-6 py-4">Actions</th>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-700">
+                                        {filteredEvents.map((event) => (
+                                            <tr key={event.id} className="hover:bg-slate-700/30 transition-colors">
+                                                <td className="px-6 py-4 font-medium text-white">
+                                                    {new Date(event.event_date).toLocaleString()}
+                                                </td>
+                                                <td className="px-6 py-4">{event.event_type_name}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${event.status === 'CANCELLED' ? 'bg-red-500/20 text-red-400' :
+                                                        event.status === 'FINISHED' ? 'bg-gray-500/20 text-gray-400' :
+                                                            'bg-emerald-500/20 text-emerald-400'
+                                                        }`}>
+                                                        {event.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${event.status_determinant === 'MANUAL' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'
+                                                        }`}>
+                                                        {event.status_determinant}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="font-mono text-gray-300">
+                                                        {event.counts ? `${event.counts.roster} / ${event.counts.waitlist_holding}` : '0 / 0'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 flex items-center gap-2">
+                                                    <select
+                                                        className="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white text-xs"
+                                                        value={event.status}
+                                                        onChange={(e) => handleStatusUpdate(event.id, e.target.value)}
+                                                    >
+                                                        {EVENT_STATUSES.map(s => (
+                                                            <option key={s} value={s}>{s}</option>
+                                                        ))}
+                                                    </select>
+                                                    <Link to={`/admin/events/${event.id}`} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs font-medium transition-colors">
+                                                        Manage Users
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {filteredEvents.length === 0 && (
+                                            <tr>
+                                                <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                                                    No events found.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )
+                })()}
 
                 {activeTab === 'blocklist' && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

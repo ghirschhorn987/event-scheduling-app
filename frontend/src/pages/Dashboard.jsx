@@ -350,7 +350,7 @@ export default function Dashboard({ session }) {
 
                             {/* Counts */}
                             <div className="flex gap-4 text-sm font-medium">
-                                <div className="bg-slate-700 px-3 py-1 rounded">Roster: <span className="text-white">{eventList.length}</span></div>
+                                <div className="bg-slate-700 px-3 py-1 rounded">Signed Up: <span className="text-white">{eventList.length}</span></div>
                                 <div className="bg-slate-700 px-3 py-1 rounded">Waitlist: <span className="text-white">{waitList.length}</span></div>
                                 <div className="bg-slate-700 px-3 py-1 rounded">Holding: <span className="text-white">{holdingList.length}</span></div>
                             </div>
@@ -360,7 +360,7 @@ export default function Dashboard({ session }) {
                                 {userSignup ? (
                                     <>
                                         <div className="text-sm text-gray-300">
-                                            You are: <strong className="text-white">{userSignup.list_type.replace('_', ' ')}</strong>
+                                            You are: <strong className="text-white">{userSignup.list_type === 'EVENT' ? 'Signed Up' : userSignup.list_type === 'WAITLIST_HOLDING' ? 'Holding Area' : 'Waitlist'}</strong>
                                             {userSignup.sequence_number > 0 && <span className="ml-1">#{userSignup.sequence_number}</span>}
                                         </div>
                                         <button onClick={() => handleDelete(userSignup.id)} className="bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1.5 rounded text-sm hover:bg-red-500 hover:text-white transition-colors">
@@ -394,6 +394,15 @@ export default function Dashboard({ session }) {
                                     <span className="text-sm text-gray-400">
                                         {userGuests.length} / {maxGuestLimit} Added
                                     </span>
+                                </div>
+
+                                <div className="space-y-2 mb-3">
+                                    {userGuests.map(g => (
+                                        <div key={g.id} className="flex justify-between items-center text-sm bg-slate-700/50 px-3 py-1.5 rounded border border-slate-600">
+                                            <span className="text-white">{g.guest_name} <span className="text-xs text-gray-400">({g.list_type === 'EVENT' ? 'Signed Up' : g.list_type === 'WAITLIST_HOLDING' ? 'Holding Area' : 'Waitlist'})</span></span>
+                                            <button onClick={() => handleDelete(g.id)} className="text-red-400 hover:text-red-300 text-xs border border-red-500/30 px-2 py-0.5 rounded bg-red-500/10 transition-colors">Remove</button>
+                                        </div>
+                                    ))}
                                 </div>
 
                                 {userGuests.length < maxGuestLimit && !showGuestForm ? (
@@ -446,7 +455,7 @@ export default function Dashboard({ session }) {
                                                         <div className="text-xs text-gray-500 ml-4 font-mono">{s.profiles.email}</div>
                                                     )}
                                                 </span>
-                                                {s.user_id === session.user.id && s.is_guest && (
+                                                {s.user_id === userProfile?.id && s.is_guest && (
                                                     <button onClick={() => handleDelete(s.id)} className="text-red-400 hover:text-red-300 text-xs ml-2 border border-red-500/30 px-2 py-0.5 rounded bg-red-500/10">Remove</button>
                                                 )}
                                             </li>
@@ -468,7 +477,7 @@ export default function Dashboard({ session }) {
                                                         <div className="text-xs text-gray-500 ml-4 font-mono">{s.profiles.email}</div>
                                                     )}
                                                 </span>
-                                                {s.user_id === session.user.id && s.is_guest && (
+                                                {s.user_id === userProfile?.id && s.is_guest && (
                                                     <button onClick={() => handleDelete(s.id)} className="text-red-400 hover:text-red-300 text-xs ml-2 border border-red-500/30 px-2 py-0.5 rounded bg-red-500/10">Remove</button>
                                                 )}
                                             </li>
@@ -502,8 +511,8 @@ export default function Dashboard({ session }) {
                                                             <div className="text-xs text-gray-500 ml-4 font-mono">{s.profiles.email}</div>
                                                         )}
                                                     </span>
-                                                    {s.user_id === session.user.id && s.is_guest && (
-                                                        <button onClick={() => handleDelete(s.id)} className="text-red-400 hover:text-red-300 text-xs ml-2 border border-red-500/30 px-2 py-0.5 rounded bg-red-500/10">Remove</button>
+                                                    {s.user_id === userProfile?.id && s.is_guest && (
+                                                        <button onClick={() => handleDelete(s.id)} className="text-red-400 hover:text-red-300 text-xs ml-2 border border-red-500/30 px-2 py-0.5 rounded bg-red-500/10 mb-1">Remove</button>
                                                     )}
                                                 </li>
                                             ))}

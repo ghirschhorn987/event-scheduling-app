@@ -693,17 +693,45 @@ async def delete_event_type(event_type_id: str, request: Request):
 # --- New Admin Event Management Endpoints ---
 
 @app.get("/api/admin/events")
-async def list_admin_events(request: Request):
+async def list_admin_events(request: Request, filter: str = "future"):
     """
     Fetch all events for admin management (including cancelled/finished).
     """
     await get_current_admin(request)
     
-    # Fetch events joined with event_types for name
-    # Filtering: We might want pagination later, but for now fetch all (or limit 100)
-    # limit=100 for now to be safe
     try:
-        res = supabase.table("events").select("*, event_types(name)").order("event_date", desc=True).limit(100).execute()
+        query = supabase.table("events").select("*, event_types(name)")
+        now = get_now()
+        
+        if filter == "future":
+            query = query.gte("event_date", now.isoformat())
+            query = query.order("event_date", desc=False)
+        elif filter == "past":
+            query = query.lt("event_date", now.isoformat())
+            query = query.order("event_date", desc=True)
+        else:
+            query = query.order("event_date", desc=False)
+            
+        res = query.limit(200).execute()
+        
+        # Fetch counts (Item 5)
+        event_ids = [row["id"] for row in res.data]
+        counts_map = {eid: {"roster": 0, "waitlist_holding": 0} for eid in event_ids}
+        
+        if event_ids:
+            signups_res = supabase.table("event_signups")\
+                .select("event_id, list_type")\
+                .in_("event_id", event_ids)\
+                .execute()
+                
+            for s in signups_res.data:
+                eid = s['event_id']
+                ltype = s['list_type']
+                if eid in counts_map:
+                    if ltype == "EVENT":
+                        counts_map[eid]["roster"] += 1
+                    elif ltype in ["WAITLIST", "WAITLIST_HOLDING"]:
+                        counts_map[eid]["waitlist_holding"] += 1
         
         data = []
         for row in res.data:
@@ -715,6 +743,7 @@ async def list_admin_events(request: Request):
                 "status": row["status"],
                 "status_determinant": row.get("status_determinant", "AUTOMATIC"),
                 "duration": row.get("duration"),
+                "counts": counts_map.get(row["id"], {"roster": 0, "waitlist_holding": 0})
             }
             data.append(event)
             

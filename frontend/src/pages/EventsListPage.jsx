@@ -66,6 +66,21 @@ export default function EventsListPage({ session }) {
                     </div>
                 </div>
 
+                <details className="bg-slate-800/50 border border-slate-700 rounded mb-6 group">
+                    <summary className="px-4 py-3 cursor-pointer text-sm font-bold text-gray-300 hover:text-white flex items-center justify-between list-none">
+                        <span>ℹ️ Event Status Legend</span>
+                        <span className="text-gray-500 group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div className="px-4 pb-4 pt-1 text-xs md:text-sm grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-6">
+                        <div><span className="text-gray-400 font-bold block mb-0.5">Not Yet Open</span><span className="text-gray-500">Scheduling has not started.</span></div>
+                        <div><span className="text-green-400 font-bold block mb-0.5">Open for Roster</span><span className="text-gray-500">Priority roster members can sign up.</span></div>
+                        <div><span className="text-blue-400 font-bold block mb-0.5">Open for Reserves</span><span className="text-gray-500">Reserves can join the Holding Area.</span></div>
+                        <div><span className="text-yellow-400 font-bold block mb-0.5">Preliminary Ordering</span><span className="text-gray-500">Holding Area randomized; initial placements visible.</span></div>
+                        <div><span className="text-orange-400 font-bold block mb-0.5">Final Ordering</span><span className="text-gray-500">Placements are locked; First-come, first-served for remaining spots.</span></div>
+                        <div><span className="text-gray-400 font-bold block mb-0.5">Finished / Cancelled</span><span className="text-gray-500">Self-explanatory.</span></div>
+                    </div>
+                </details>
+
                 {loading ? (
                     <div className="p-4 text-gray-400">Loading events...</div>
                 ) : filteredEvents.length === 0 ? (

@@ -244,9 +244,9 @@ const AdminEventDetail = ({ session }) => {
                                             onChange={(e) => handleMoveUser(u.id, e.target.value)}
                                             className="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white text-xs"
                                         >
-                                            <option value="EVENT">Roster</option>
+                                            <option value="EVENT">Signed Up</option>
                                             <option value="WAITLIST">Waitlist</option>
-                                            <option value="WAITLIST_HOLDING">Holding Queue</option>
+                                            <option value="WAITLIST_HOLDING">Holding Area</option>
                                         </select>
                                     </td>
                                     <td className="px-6 py-4">
@@ -323,9 +323,9 @@ const AdminEventDetail = ({ session }) => {
                     </div>
                 )}
 
-                {renderUserTable("EVENT", "Roster")}
+                {renderUserTable("EVENT", "Signed Up")}
                 {renderUserTable("WAITLIST", "Waitlist")}
-                {renderUserTable("WAITLIST_HOLDING", "Holding Queue")}
+                {renderUserTable("WAITLIST_HOLDING", "Holding Area")}
 
             </div>
 
@@ -342,9 +342,9 @@ const AdminEventDetail = ({ session }) => {
                                     value={targetList}
                                     onChange={(e) => setTargetList(e.target.value)}
                                 >
-                                    <option value="EVENT">Roster</option>
+                                    <option value="EVENT">Signed Up</option>
                                     <option value="WAITLIST">Waitlist</option>
-                                    <option value="WAITLIST_HOLDING">Holding Queue</option>
+                                    <option value="WAITLIST_HOLDING">Holding Area</option>
                                 </select>
                             </div>
 

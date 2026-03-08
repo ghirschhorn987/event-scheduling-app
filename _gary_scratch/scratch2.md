@@ -47,6 +47,16 @@ Add filter to Approve Accounts page to show only registration requests with cert
 Explain what the different type values mean on the User Groups page. Possibly rename to be clearer -- suggest alternatives but don't rename them.
 
 
+The Admn Events page should have the same sort order and filters and default settings as the Events page
+
+The main event details has 3 sections name "Signed Up" "Waitlist" and "Holding Area".  These terms should be consistent throught the app but they are not.  IN some places, we use "Roster" instead of "Signed Up", like at the summary at top of event etails page that counts current signups and in the Manage Event Users pages where the different sections are called "Roster", "Waitlist", and "Holding Queue".  Please correct these locations and let me know if there are others.  Note that "Roster" is the correct term for the user group consisting of the people that have priority (e.g. current SundayBasketball group).  Use of roster should not change there nor in the event status enum OPEN_FOR_ROSTER -- that is correct. 
+
+Add functionality for someone to remove their guests from an event.
+
+On the non-Help page, please add information about what the different event status values mean.  
+
+THe list on Manage Event Lists should show the current counts for the different signup lists (signed up, waitlist plus holding queue) for each event.  It csn be simple set of numbers separated by slash, like it is on the Events page.  The waitlist and holding queue should be combined into one count. 
+
 
 
 
