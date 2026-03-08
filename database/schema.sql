@@ -9,7 +9,8 @@ CREATE TABLE user_groups (
   name TEXT NOT NULL UNIQUE,
   description TEXT,
   google_group_id TEXT,
-  group_email TEXT
+  group_email TEXT,
+  guest_limit INTEGER DEFAULT 0
 );
 
 -- Profiles (Public user data linked to auth.users)
@@ -78,9 +79,12 @@ CREATE TABLE event_signups (
   list_type list_type NOT NULL,
   sequence_number INTEGER,
   tier INTEGER,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  UNIQUE(event_id, user_id)
+  is_guest BOOLEAN DEFAULT false,
+  guest_name TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+CREATE UNIQUE INDEX event_signups_user_only_idx ON event_signups (event_id, user_id) WHERE is_guest = false;
 
 ALTER TABLE event_signups ENABLE ROW LEVEL SECURITY;
 

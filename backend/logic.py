@@ -304,3 +304,76 @@ def resequence_holding(queue):
             "sequence_number": i + 1
         })
     return updates
+
+def generate_future_events(supabase_client, weeks_to_generate=4):
+    """
+    Auto-generates future events based on existing event types.
+    """
+    import pytz
+    
+    # 1. Provide Event Types mapping
+    try:
+        res = supabase_client.table("event_types").select("*").execute()
+        if not res.data:
+            print("No event types found for auto-generation.")
+            return 0
+        
+        event_types = res.data
+    except Exception as e:
+        print(f"Error fetching event types for auto-generation: {e}")
+        return 0
+
+    # 2. Generate Events
+    start_date = datetime.now()
+    tz_name = "America/Los_Angeles"
+    local_tz = pytz.timezone(tz_name)
+    
+    new_events_count = 0
+    
+    for t in event_types:
+        tid = t["id"]
+        db_dow = t["day_of_week"]
+        target_time_str = t["time_of_day"]
+        
+        # Parse time
+        time_parts = target_time_str.split(':')
+        h = int(time_parts[0])
+        m = int(time_parts[1]) if len(time_parts) > 1 else 0
+        
+        # Python's datetime.weekday(): Mon=0, Sun=6. DB stores: Sun=0, Sat=6
+        py_dow = 6 if db_dow == 0 else db_dow - 1
+        
+        days_ahead = py_dow - start_date.weekday()
+        if days_ahead < 0:
+             days_ahead += 7
+            
+        first_match_date = start_date + timedelta(days=days_ahead)
+        
+        for w in range(weeks_to_generate):
+            event_date = first_match_date + timedelta(weeks=w)
+            
+            # Localize datetime
+            dt_local = local_tz.localize(datetime(
+                event_date.year, event_date.month, event_date.day,
+                h, m, 0
+            ))
+            
+            # Convert to ISO for DB
+            iso_str = dt_local.isoformat()
+            
+            try:
+                payload = {
+                    "event_type_id": tid,
+                    "event_date": iso_str,
+                    "status": "NOT_YET_OPEN" 
+                }
+                # Check if it already exists
+                existing = supabase_client.table("events").select("id").eq("event_type_id", tid).eq("event_date", iso_str).execute()
+                if not existing.data:
+                    res = supabase_client.table("events").insert(payload).execute()
+                    if res.data:
+                        new_events_count += 1
+            except Exception as e:
+                print(f"Error creating event auto-generation: {e}")
+
+    return new_events_count

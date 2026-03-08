@@ -19,7 +19,8 @@ const AdminGroupDetail = ({ session }) => {
         name: "",
         description: "",
         google_group_id: "",
-        group_email: ""
+        group_email: "",
+        guest_limit: 0
     })
 
     useEffect(() => {
@@ -33,7 +34,8 @@ const AdminGroupDetail = ({ session }) => {
                 name: group.name || "",
                 description: group.description || "",
                 google_group_id: group.google_group_id || "",
-                group_email: group.group_email || ""
+                group_email: group.group_email || "",
+                guest_limit: group.guest_limit || 0
             })
         }
     }, [group])
@@ -297,6 +299,16 @@ const AdminGroupDetail = ({ session }) => {
                                             className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
                                         />
                                     </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">Guest Limit</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            value={editForm.guest_limit}
+                                            onChange={(e) => setEditForm({ ...editForm, guest_limit: parseInt(e.target.value) || 0 })}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                        />
+                                    </div>
 
                                     <div className="flex gap-2 pt-2">
                                         <button
@@ -345,6 +357,10 @@ const AdminGroupDetail = ({ session }) => {
                                     <div>
                                         <div className="text-xs text-gray-500">Internal ID</div>
                                         <div className="text-white font-mono text-xs truncate" title={group.id}>{group.id}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-gray-500">Guest Limit</div>
+                                        <div className="text-white font-mono text-xs">{group.guest_limit || 0}</div>
                                     </div>
                                 </div>
                             )}

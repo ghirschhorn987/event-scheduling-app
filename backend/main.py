@@ -2,6 +2,7 @@ import os
 import random
 from datetime import datetime, timezone
 from typing import List, Optional
+import pytz
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
@@ -10,7 +11,7 @@ from pydantic import BaseModel
 
 from db import supabase
 from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate, GroupMemberAction, GroupMembersAction, UserGroupsUpdate, UserGroupMetadataUpdate, EventTypeCreate, EventTypeUpdate
-from logic import enrich_event, randomize_holding_queue, promote_from_holding, check_signup_eligibility, determine_event_status, resequence_holding, parse_interval_to_minutes
+from logic import enrich_event, randomize_holding_queue, promote_from_holding, check_signup_eligibility, determine_event_status, resequence_holding, parse_interval_to_minutes, generate_future_events
 
 app = FastAPI()
 
@@ -199,6 +200,7 @@ async def list_user_groups(request: Request):
             "name": row["name"],
             "description": row["description"],
             "google_group_id": row.get("google_group_id"),
+            "guest_limit": row.get("guest_limit", 0),
             "user_count": count
         })
     return {"status": "success", "data": data}
@@ -208,13 +210,14 @@ async def update_user_group(group_id: str, body: UserGroupMetadataUpdate, reques
     """
     Update group metadata (name, description, google_group_id, group_email).
     """
-    user = await admin_guard(request)
+    user = await get_current_admin(request)
     
     update_data = {}
     if body.name is not None: update_data["name"] = body.name
     if body.description is not None: update_data["description"] = body.description
     if body.google_group_id is not None: update_data["google_group_id"] = body.google_group_id
     if body.group_email is not None: update_data["group_email"] = body.group_email
+    if body.guest_limit is not None: update_data["guest_limit"] = body.guest_limit
 
     if not update_data:
         return {"status": "success", "message": "No fields to update"}
@@ -731,7 +734,7 @@ async def signup(body: SignupRequest, request: Request):
     
     try:
         # Fetch profile with groups (via join table)
-        profile_res = supabase.table("profiles").select("*, profile_groups(user_groups(id, name))").eq("auth_user_id", user_id).execute()
+        profile_res = supabase.table("profiles").select("*, profile_groups(user_groups(id, name, guest_limit))").eq("auth_user_id", user_id).execute()
         
         profile = None
         if not profile_res.data:
@@ -771,13 +774,15 @@ async def signup(body: SignupRequest, request: Request):
         raise HTTPException(status_code=500, detail=f"Database error checking profile: {str(e)}")
 
     # Check if already signed up (using Profile ID)
-    existing = supabase.table("event_signups").select("*").eq("event_id", body.event_id).eq("user_id", profile["id"]).execute()
-    if existing.data:
-        raise HTTPException(status_code=400, detail="User already signed up")
+    if not body.is_guest:
+        existing = supabase.table("event_signups").select("*").eq("event_id", body.event_id).eq("user_id", profile["id"]).eq("is_guest", False).execute()
+        if existing.data:
+            raise HTTPException(status_code=400, detail="User already signed up")
 
     # Flatten groups
     user_groups = []
     user_group_ids = []
+    max_guest_limit = 0
     if profile.get("profile_groups"):
         for pg in profile["profile_groups"]:
             if pg.get("user_groups"):
@@ -786,6 +791,9 @@ async def signup(body: SignupRequest, request: Request):
                     user_groups.append(group_data["name"])
                 if group_data.get("id"):
                     user_group_ids.append(group_data["id"])
+                gl = group_data.get("guest_limit")
+                if gl and gl > max_guest_limit:
+                    max_guest_limit = gl
 
     # Determine Access
     is_member = len(user_groups) > 0 or len(user_group_ids) > 0
@@ -803,8 +811,25 @@ async def signup(body: SignupRequest, request: Request):
         
         if not eligibility["allowed"]:
              raise HTTPException(status_code=400, detail=eligibility["error_message"])
+
+        if body.is_guest:
+            if max_guest_limit <= 0:
+                raise HTTPException(status_code=403, detail="You do not have permission to add guests.")
+            
+            guest_count_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("user_id", profile["id"]).eq("is_guest", True).execute()
+            current_guests = guest_count_res.count or 0
+            if current_guests >= max_guest_limit:
+                raise HTTPException(status_code=400, detail=f"You have reached your guest limit of {max_guest_limit} for this event.")
+            
+            if not body.guest_name:
+                raise HTTPException(status_code=400, detail="Guest name is required.")
              
         target_list = eligibility["target_list"]
+        
+        if body.is_guest:
+            # Guests always go to waitlist
+            target_list = "WAITLIST" if target_list == "EVENT" else target_list
+            eligibility["tier"] = 0 # Top priority in waitlist
         
         # If target is EVENT, we still need to check if it's full (Overflow to WAITLIST)
         # But if target is WAITLIST_HOLDING, we just put them there.
@@ -840,7 +865,9 @@ async def signup(body: SignupRequest, request: Request):
             "user_id": profile["id"],
             "list_type": final_list_type,
             "sequence_number": sequence,
-            "tier": eligibility.get("tier") # Store tier for sorting later
+            "tier": eligibility.get("tier"), # Store tier for sorting later
+            "is_guest": body.is_guest,
+            "guest_name": body.guest_name
         }
         
         print(f"DEBUG: Payload for insert: {payload}")
@@ -873,12 +900,21 @@ async def remove_signup(body: SignupRequest, request: Request):
         target_profile_id = profile_res.data["id"]
 
         # 1. Fetch current signup status BEFORE deleting
-        current_signup_res = supabase.table("event_signups")\
-            .select("*")\
-            .eq("event_id", body.event_id)\
-            .eq("user_id", target_profile_id)\
-            .maybe_single()\
-            .execute()
+        if body.signup_id:
+            current_signup_res = supabase.table("event_signups")\
+                .select("*")\
+                .eq("id", body.signup_id)\
+                .eq("user_id", target_profile_id)\
+                .maybe_single()\
+                .execute()
+        else:
+            current_signup_res = supabase.table("event_signups")\
+                .select("*")\
+                .eq("event_id", body.event_id)\
+                .eq("user_id", target_profile_id)\
+                .eq("is_guest", False)\
+                .maybe_single()\
+                .execute()
             
         if not current_signup_res.data:
             return {"status": "success", "message": "Signup not found (already removed?)"}
@@ -1210,7 +1246,26 @@ async def trigger_schedule(request: Request):
             except Exception as e:
                 print(f"Error updating status for {event['id']}: {e}")
 
-    return {"status": "completed", "processed_events": processed_count, "users_promoted": promoted_count}
+    # --- FUTURE EVENT GENERATION ROUTINE ---
+    # To prevent spamming DB inserts every 5 minutes, we only run generation 
+    # roughly once a day. If it runs every 5 minutes, checking during the 00-05 minute mark
+    # of a specific hour will make it run exactly once per day.
+    # We choose 8:00 AM UTC (Midnight PT during PST, 1 AM during PDT).
+    generated_count = 0
+    if now.hour == 8 and now.minute < 5:
+        print("Daily trigger reached. Generating future events...")
+        try:
+            generated_count = generate_future_events(supabase, weeks_to_generate=4)
+            print(f"Generated {generated_count} new events.")
+        except Exception as e:
+            print(f"Error during scheduled event generation: {e}")
+
+    return {
+        "status": "completed", 
+        "processed_events": processed_count, 
+        "users_promoted": promoted_count,
+        "events_generated": generated_count
+    }
 
 
 

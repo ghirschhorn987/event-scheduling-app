@@ -11,6 +11,8 @@ export default function Dashboard({ session }) {
     const [nextEvent, setNextEvent] = useState(null)
     const [signups, setSignups] = useState([])
     const [refreshTrigger, setRefreshTrigger] = useState(0)
+    const [showGuestForm, setShowGuestForm] = useState(false)
+    const [guestName, setGuestName] = useState('')
 
     // Fetch data
     useEffect(() => {
@@ -22,7 +24,7 @@ export default function Dashboard({ session }) {
                 // We select profile_groups -> user_groups to check membership
                 const { data: profile } = await supabase
                     .from('profiles')
-                    .select('*, profile_groups(user_groups(id, name))')
+                    .select('*, profile_groups(user_groups(id, name, guest_limit))')
                     .eq('auth_user_id', session.user.id)
                     .single()
 
@@ -140,6 +142,16 @@ export default function Dashboard({ session }) {
         }
     }
 
+    let maxGuestLimit = 0
+    if (userProfile?.profile_groups) {
+        userProfile.profile_groups.forEach(pg => {
+            if (pg.user_groups?.guest_limit && pg.user_groups.guest_limit > maxGuestLimit) {
+                maxGuestLimit = pg.user_groups.guest_limit
+            }
+        })
+    }
+
+
     // 2. Determine Timings & Windows
     const rosterOpenTime = nextEvent ? new Date(nextEvent.roster_sign_up_open) : null
     const reserveOpenTime = nextEvent ? new Date(nextEvent.reserve_sign_up_open) : null
@@ -151,7 +163,8 @@ export default function Dashboard({ session }) {
     const holdingList = signups.filter(s => s.list_type === 'WAITLIST_HOLDING')
 
     // Helper to check if user is in a list
-    const userSignup = signups.find(s => s.user_id === userProfile?.id)
+    const userSignup = signups.find(s => s.user_id === userProfile?.id && !s.is_guest)
+    const userGuests = signups.filter(s => s.user_id === userProfile?.id && s.is_guest)
 
     // 3. Determine Eligibility & Action State
     let canJoin = false
@@ -203,7 +216,7 @@ export default function Dashboard({ session }) {
     }
 
     // Actions
-    const handleJoin = async () => {
+    const handleJoin = async (isGuest = false, gName = '') => {
         if (!nextEvent) return
 
         try {
@@ -215,7 +228,9 @@ export default function Dashboard({ session }) {
                 },
                 body: JSON.stringify({
                     event_id: nextEvent.id,
-                    user_id: session.user.id
+                    user_id: session.user.id,
+                    is_guest: isGuest,
+                    guest_name: gName
                 })
             })
 
@@ -239,6 +254,10 @@ export default function Dashboard({ session }) {
                 localStorage.setItem(mockKey, JSON.stringify(mockSignup))
             }
 
+            if (isGuest) {
+                setShowGuestForm(false)
+                setGuestName('')
+            }
             refresh()
         } catch (error) {
             console.error(error)
@@ -246,7 +265,7 @@ export default function Dashboard({ session }) {
         }
     }
 
-    const handleDelete = async () => {
+    const handleDelete = async (signupId) => {
         // -- MOCK AUTH: REMOVE LOCAL SIGNUP --
         const useMock = import.meta.env.VITE_USE_MOCK_AUTH === 'true'
         if (useMock) {
@@ -263,7 +282,8 @@ export default function Dashboard({ session }) {
                 },
                 body: JSON.stringify({
                     event_id: nextEvent.id,
-                    user_id: session.user.id
+                    user_id: session.user.id,
+                    signup_id: signupId
                 })
             })
 
@@ -344,7 +364,7 @@ export default function Dashboard({ session }) {
                                             You are: <strong className="text-white">{userSignup.list_type.replace('_', ' ')}</strong>
                                             {userSignup.sequence_number > 0 && <span className="ml-1">#{userSignup.sequence_number}</span>}
                                         </div>
-                                        <button onClick={handleDelete} className="bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1.5 rounded text-sm hover:bg-red-500 hover:text-white transition-colors">
+                                        <button onClick={() => handleDelete(userSignup.id)} className="bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1.5 rounded text-sm hover:bg-red-500 hover:text-white transition-colors">
                                             Leave
                                         </button>
                                     </>
@@ -358,7 +378,7 @@ export default function Dashboard({ session }) {
                                                 </button>
                                             </div>
                                         ) : (
-                                            <button onClick={handleJoin} className="primary-btn py-1.5 px-6 text-sm">
+                                            <button onClick={() => handleJoin(false, '')} className="primary-btn py-1.5 px-6 text-sm">
                                                 {actionLabel}
                                             </button>
                                         )}
@@ -366,6 +386,50 @@ export default function Dashboard({ session }) {
                                 )}
                             </div>
                         </div>
+
+                        {/* Guest Section */}
+                        {maxGuestLimit > 0 && canJoin && !isCanceled && (
+                            <div className="bg-slate-800 p-4 rounded shadow mb-6 border border-slate-700">
+                                <div className="flex justify-between items-center mb-2">
+                                    <h3 className="font-bold text-white">Out-of-Town Guests</h3>
+                                    <span className="text-sm text-gray-400">
+                                        {userGuests.length} / {maxGuestLimit} Added
+                                    </span>
+                                </div>
+
+                                {userGuests.length < maxGuestLimit && !showGuestForm ? (
+                                    <button
+                                        onClick={() => setShowGuestForm(true)}
+                                        className="text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white px-3 py-1.5 rounded transition-colors border border-blue-500/50 mt-1"
+                                    >
+                                        + Add Guest
+                                    </button>
+                                ) : userGuests.length < maxGuestLimit && showGuestForm ? (
+                                    <div className="flex gap-2 mt-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Guest Name"
+                                            value={guestName}
+                                            onChange={(e) => setGuestName(e.target.value)}
+                                            className="bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:ring-1 focus:ring-blue-500 flex-1"
+                                        />
+                                        <button
+                                            onClick={() => handleJoin(true, guestName)}
+                                            disabled={!guestName.trim()}
+                                            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-4 py-1.5 rounded text-sm transition-colors"
+                                        >
+                                            Add
+                                        </button>
+                                        <button
+                                            onClick={() => setShowGuestForm(false)}
+                                            className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-sm transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                ) : null}
+                            </div>
+                        )}
 
 
                         {/* Lists Display */}
@@ -377,7 +441,12 @@ export default function Dashboard({ session }) {
                                         .sort((a, b) => (a.sequence_number || 9999) - (b.sequence_number || 9999))
                                         .map((s, i) => (
                                             <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
-                                                <span>{i + 1}. {s.profiles?.name || 'Guest'}</span>
+                                                <span>
+                                                    {i + 1}. {s.is_guest ? <span className="text-blue-300">Guest: {s.guest_name} <span className="text-xs text-gray-500">(Sponsor: {s.profiles?.name})</span></span> : (s.profiles?.name || 'Unknown')}
+                                                </span>
+                                                {s.user_id === session.user.id && s.is_guest && (
+                                                    <button onClick={() => handleDelete(s.id)} className="text-red-400 hover:text-red-300 text-xs ml-2 border border-red-500/30 px-2 py-0.5 rounded bg-red-500/10">Remove</button>
+                                                )}
                                             </li>
                                         ))}
                                     {eventList.length === 0 && <li className="text-gray-500 italic">Empty</li>}
@@ -391,7 +460,12 @@ export default function Dashboard({ session }) {
                                         .sort((a, b) => (a.sequence_number || 9999) - (b.sequence_number || 9999))
                                         .map((s, i) => (
                                             <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
-                                                <span>{i + 1}. {s.profiles?.name || 'Guest'}</span>
+                                                <span>
+                                                    {i + 1}. {s.is_guest ? <span className="text-blue-300">Guest: {s.guest_name} <span className="text-xs text-gray-500">(Sponsor: {s.profiles?.name})</span></span> : (s.profiles?.name || 'Unknown')}
+                                                </span>
+                                                {s.user_id === session.user.id && s.is_guest && (
+                                                    <button onClick={() => handleDelete(s.id)} className="text-red-400 hover:text-red-300 text-xs ml-2 border border-red-500/30 px-2 py-0.5 rounded bg-red-500/10">Remove</button>
+                                                )}
                                             </li>
                                         ))}
                                     {waitList.length === 0 && <li className="text-gray-500 italic">Empty</li>}
@@ -418,8 +492,11 @@ export default function Dashboard({ session }) {
                                             .map((s, i) => (
                                                 <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
                                                     <span>
-                                                        {nextEvent.status === 'OPEN_FOR_RESERVES' ? '-' : (i + 1) + '.'} {s.profiles?.name || 'Guest'}
+                                                        {nextEvent.status === 'OPEN_FOR_RESERVES' ? '-' : (i + 1) + '.'} {s.is_guest ? <span className="text-blue-300">Guest: {s.guest_name} <span className="text-xs text-gray-500">(Sponsor: {s.profiles?.name})</span></span> : (s.profiles?.name || 'Unknown')}
                                                     </span>
+                                                    {s.user_id === session.user.id && s.is_guest && (
+                                                        <button onClick={() => handleDelete(s.id)} className="text-red-400 hover:text-red-300 text-xs ml-2 border border-red-500/30 px-2 py-0.5 rounded bg-red-500/10">Remove</button>
+                                                    )}
                                                 </li>
                                             ))}
                                     </ul>

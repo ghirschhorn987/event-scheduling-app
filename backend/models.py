@@ -6,6 +6,9 @@ from datetime import datetime
 class SignupRequest(BaseModel):
     event_id: str
     user_id: str  # In a real app, we'd get this from the auth token, but for now we'll accept it
+    is_guest: Optional[bool] = False
+    guest_name: Optional[str] = None
+    signup_id: Optional[str] = None # Used for removing an explicit signup
 
 class ScheduleResponse(BaseModel):
     status: str
@@ -85,6 +88,7 @@ class UserGroupMetadataUpdate(BaseModel):
     description: Optional[str] = None
     google_group_id: Optional[str] = None
     group_email: Optional[str] = None
+    guest_limit: Optional[int] = None
 
 class EventTypeCreate(BaseModel):
     name: str
