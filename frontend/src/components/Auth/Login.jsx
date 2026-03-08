@@ -132,8 +132,8 @@ export default function Login() {
             <button className="secondary-btn" onClick={handleGoogleLogin} disabled={loading} style={{ width: '100%' }}>
                 Sign in with Google
             </button>
-            <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '5px' }}>
-                You will be redirected to our secure authentication partner to sign in.
+            <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '5px', textAlign: 'center' }}>
+                You will be redirected to our secure authentication partner (supabase.com) to sign in. This is normal and safe.
             </p>
 
             {import.meta.env.VITE_USE_MOCK_AUTH === 'true' && (
@@ -154,10 +154,9 @@ export default function Login() {
                 </button>
             )}
 
-            <div className="registration-section">
-                <h4>New Here? Join The Game</h4>
-                <p>1. <Link to="/request-access">Request Access</Link> to get started.</p>
-                <p>2. Once approved, <Link to="/signup">Create Your Account</Link>.</p>
+            <div className="registration-section text-center mt-6">
+                <h4>New Here?</h4>
+                <p><Link to="/new" className="text-blue-500 hover:text-blue-400 font-medium">Click here to get started with Beth Am Basketball</Link></p>
             </div>
         </div>
     )

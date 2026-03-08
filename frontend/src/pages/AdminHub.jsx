@@ -95,10 +95,50 @@ const AdminHub = ({ session }) => {
                     </div>
                 </Link>
 
-                {/* Analytics or Other (Placeholder) */}
-                <div className="hidden lg:flex bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 border-dashed flex-col items-center justify-center text-center opacity-60">
-                    <p className="text-gray-500 italic text-sm">More functionality coming soon...</p>
+                {/* Trigger Scheduler Card */}
+                <div className="admin-card group cursor-pointer" onClick={async () => {
+                    if (!window.confirm("Trigger the scheduler to update statuses, process waitlists, and generate future events now?")) return;
+                    try {
+                        const res = await fetch('/api/schedule?force_generation=true', {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${session.access_token}` }
+                        });
+                        const data = await res.json();
+                        if (res.ok) alert(`Success!\nEvents Processed: ${data.processed_events}\nUsers Promoted: ${data.users_promoted}\nEvents Generated: ${data.events_generated}`);
+                        else alert(`Error: ${data.detail}`);
+                    } catch (e) {
+                        alert(`Error: ${e.message}`);
+                    }
+                }}>
+                    <div className="p-6 bg-slate-800/80 rounded-xl border border-slate-600 hover:border-yellow-500 transition-all duration-300 shadow-lg hover:shadow-yellow-500/10 h-full flex flex-col">
+                        <div className="w-12 h-12 bg-yellow-500/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-yellow-500/20 transition-colors">
+                            <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-bold text-white mb-2">Trigger Scheduler</h2>
+                        <p className="text-gray-400 flex-grow">Manually invoke the background job to update statuses, process waitlists, and generate future events.</p>
+                        <div className="mt-4 text-yellow-400 font-semibold flex items-center gap-2 group-hover:translate-x-1 transition-transform">
+                            Run Now <span>&rarr;</span>
+                        </div>
+                    </div>
                 </div>
+
+                {/* Admin Help Card */}
+                <Link to="/admin/help" className="admin-card group">
+                    <div className="p-6 bg-slate-800 rounded-xl border border-slate-700 hover:border-indigo-500 transition-all duration-300 shadow-lg hover:shadow-indigo-500/10 h-full flex flex-col">
+                        <div className="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-indigo-500/20 transition-colors">
+                            <svg className="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-bold text-white mb-2">Architecture & Help</h2>
+                        <p className="text-gray-400 flex-grow">Read documentation on scheduling logic, waitlists, and cron behaviors.</p>
+                        <div className="mt-4 text-indigo-400 font-semibold flex items-center gap-2 group-hover:translate-x-1 transition-transform">
+                            View Documentation <span>&rarr;</span>
+                        </div>
+                    </div>
+                </Link>
 
             </div>
         </div>

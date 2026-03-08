@@ -9,6 +9,7 @@ import Signup from './components/Auth/Signup'
 import PasswordReset from './components/Auth/PasswordReset'
 import MockAuthToolbar from './components/MockAuthToolbar'
 import RequestAccess from './pages/RequestAccess'
+import NewToTheGame from './pages/NewToTheGame'
 import AdminHub from './pages/AdminHub'
 import AdminApprovals from './pages/AdminApprovals'
 import AdminGroups from './pages/AdminGroups'
@@ -19,6 +20,8 @@ import EventsListPage from './pages/EventsListPage'
 import AdminEventTypes from './pages/AdminEventTypes'
 import AdminEvents from './pages/AdminEvents'
 import AdminEventDetail from './pages/AdminEventDetail'
+import Help from './pages/Help'
+import AdminHelp from './pages/AdminHelp'
 
 function App() {
     const [session, setSession] = useState(null)
@@ -95,6 +98,7 @@ function App() {
                     <Routes>
                         <Route path="/login" element={!session ? <Login /> : <Navigate to="/dashboard" />} />
                         <Route path="/signup" element={!session ? <Signup /> : <Navigate to="/dashboard" />} />
+                        <Route path="/new" element={!session ? <NewToTheGame /> : <Navigate to="/dashboard" />} />
                         <Route path="/request-access" element={!session ? <RequestAccess /> : <Navigate to="/dashboard" />} />
                         <Route path="/forgot-password" element={!session ? <PasswordReset /> : <Navigate to="/dashboard" />} />
                         <Route path="/dashboard" element={session ? <Dashboard session={session} /> : <Navigate to="/login" />} />
@@ -109,6 +113,8 @@ function App() {
                         <Route path="/admin/event-types" element={session ? <AdminEventTypes session={session} /> : <Navigate to="/login" />} />
                         <Route path="/admin/events" element={session ? <AdminEvents session={session} /> : <Navigate to="/login" />} />
                         <Route path="/admin/events/:eventId" element={session ? <AdminEventDetail session={session} /> : <Navigate to="/login" />} />
+                        <Route path="/help" element={session ? <Help session={session} /> : <Navigate to="/login" />} />
+                        <Route path="/admin/help" element={session ? <AdminHelp session={session} /> : <Navigate to="/login" />} />
                         <Route path="/update-password" element={<UpdatePassword />} />
                         <Route path="/" element={<Navigate to={session ? "/dashboard" : "/login"} />} />
                     </Routes>

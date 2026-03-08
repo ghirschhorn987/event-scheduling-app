@@ -1242,20 +1242,20 @@ async def remove_signup(body: SignupRequest, request: Request):
 
 
 @app.get("/api/events")
-async def get_events(request: Request):
-    # Authenticated endpoint to list upcoming events
+async def get_events(request: Request, filter: str = "future"):
+    # Authenticated endpoint to list events
     await get_current_user(request)
     
-    # 1. Fetch events + types
-    # Filter: event_date >= now (or maybe slightly in past?)
-    # User said "list of upcoming events".
     now = get_now()
+    query = supabase.table("events").select("*, event_types(*)")
     
-    events_res = supabase.table("events")\
-        .select("*, event_types(*)")\
-        .gte("event_date", now.isoformat())\
-        .order("event_date")\
-        .execute()
+    if filter == "future":
+        query = query.gte("event_date", now.isoformat())
+    elif filter == "past":
+        query = query.lt("event_date", now.isoformat())
+        
+    # User requested chronological order
+    events_res = query.order("event_date").execute()
         
     enriched_events = [enrich_event(e) for e in events_res.data]
     
@@ -1298,18 +1298,24 @@ async def trigger_schedule(request: Request):
     Auto-schedule guests from Holding Area -> Event/Waitlist
     Run this periodically or trigger manually.
     """
-    # Security Check
+    # Try admin auth first
+    is_admin = False
+    auth_header = request.headers.get("Authorization")
+    if auth_header:
+        try:
+            await check_admin(request)
+            is_admin = True
+        except:
+            pass
+
     expected_secret = os.environ.get("CRON_SECRET")
-    if not expected_secret:
-        print("WARNING: CRON_SECRET not set in environment. Endpoint is insecure.")
-    
-    # Check header
-    # Cloud Scheduler sends these headers
     cron_header = request.headers.get("X-Cron-Secret")
+    force_generation = request.query_params.get("force_generation") == "true"
     
-    if expected_secret and cron_header != expected_secret:
-        print(f"Unauthorized schedule attempt. Header: {cron_header}")
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not is_admin:
+        if expected_secret and cron_header != expected_secret:
+            print(f"Unauthorized schedule attempt. Header: {cron_header}")
+            raise HTTPException(status_code=401, detail="Unauthorized")
 
     now = get_now()
     
@@ -1557,9 +1563,11 @@ async def trigger_schedule(request: Request):
     # roughly once a day. If it runs every 5 minutes, checking during the 00-05 minute mark
     # of a specific hour will make it run exactly once per day.
     # We choose 8:00 AM UTC (Midnight PT during PST, 1 AM during PDT).
+    # We choose 8:00 AM UTC (Midnight PT during PST, 1 AM during PDT).
     generated_count = 0
-    if now.hour == 8 and now.minute < 5:
-        print("Daily trigger reached. Generating future events...")
+    if force_generation or (now.hour == 8 and now.minute < 5):
+        reason = "Manual force" if force_generation else "Daily trigger"
+        print(f"{reason} reached. Generating future events...")
         try:
             generated_count = generate_future_events(supabase, days_ahead_to_ensure=14)
             print(f"Generated {generated_count} new events.")

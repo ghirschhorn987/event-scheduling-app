@@ -2,7 +2,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useEffect, useState } from 'react'
 
-export default function Header({ session, showEmailPreview }) {
+export default function Header({ session }) {
     const navigate = useNavigate()
     const location = useLocation()
     const [userName, setUserName] = useState('')
@@ -72,25 +72,29 @@ export default function Header({ session, showEmailPreview }) {
                             </Link>
                         )
                     )}
+
+                    {location.pathname === '/help' ? (
+                        <span className="text-xl font-bold text-gray-400 cursor-default select-none">
+                            Help
+                        </span>
+                    ) : (
+                        <Link to="/help" className="text-xl font-bold text-white hover:text-blue-400 transition-colors">
+                            Help
+                        </Link>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-8">
                     {session ? (
                         <>
-                            {showEmailPreview ? (
-                                <div className="flex flex-col items-end">
-                                    <span className="text-sm font-bold text-gray-300 whitespace-nowrap">
-                                        {userName || 'Unknown Name'}
-                                    </span>
-                                    <span className="text-xs text-gray-500 whitespace-nowrap">
-                                        {session.user.email}
-                                    </span>
-                                </div>
-                            ) : (
-                                <span className="text-sm text-gray-300 whitespace-nowrap">
-                                    {userName || session.user.email}
+                            <div className="flex flex-col items-end">
+                                <span className="text-sm font-bold text-gray-300 whitespace-nowrap">
+                                    {userName || 'Unknown Name'}
                                 </span>
-                            )}
+                                <span className="text-xs text-gray-500 whitespace-nowrap">
+                                    {session.user.email}
+                                </span>
+                            </div>
                             <button
                                 onClick={handleSignOut}
                                 className="text-sm text-red-500 hover:text-red-400 font-medium whitespace-nowrap"

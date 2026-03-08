@@ -80,6 +80,28 @@ const AdminGroups = ({ session }) => {
                 </div>
             )}
 
+            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6 shadow">
+                <h2 className="text-lg font-bold text-white mb-2">Group Types Guide</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                    <div>
+                        <span className="font-bold text-blue-400">Event Eligibility:</span>
+                        <p className="text-gray-400 mt-1">Used by the scheduler to determine who can sign up for events and when (e.g., Roster, Reserves).</p>
+                    </div>
+                    <div>
+                        <span className="font-bold text-emerald-400">Application Role:</span>
+                        <p className="text-gray-400 mt-1">Defines system access levels, such as Administrators.</p>
+                    </div>
+                    <div>
+                        <span className="font-bold text-purple-400">User Characteristic:</span>
+                        <p className="text-gray-400 mt-1">Informational tags for users, such as positions or skill levels.</p>
+                    </div>
+                    <div>
+                        <span className="font-bold text-gray-400">Other:</span>
+                        <p className="text-gray-400 mt-1">General categories or legacy groups that do not fit into the standard types.</p>
+                    </div>
+                </div>
+            </div>
+
             <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-xl overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[800px]">
@@ -101,7 +123,11 @@ const AdminGroups = ({ session }) => {
                                         <div className="font-bold text-white">{group.name}</div>
                                     </td>
                                     <td className="p-4">
-                                        <span className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-xs font-medium whitespace-nowrap">
+                                        <span className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${group.group_type === 'EVENT_ELIGIBILITY' ? 'bg-blue-900/50 text-blue-300 border border-blue-800' :
+                                                group.group_type === 'APPLICATION_ROLE' ? 'bg-emerald-900/50 text-emerald-300 border border-emerald-800' :
+                                                    group.group_type === 'USER_CHARACTERISTIC' ? 'bg-purple-900/50 text-purple-300 border border-purple-800' :
+                                                        'bg-slate-700 text-slate-300'
+                                            }`}>
                                             {group.group_type ? group.group_type.replace(/_/g, ' ') : "OTHER"}
                                         </span>
                                     </td>

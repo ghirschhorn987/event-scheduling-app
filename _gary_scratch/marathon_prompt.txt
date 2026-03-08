@@ -1,0 +1,11 @@
+I want to begin a marathon implementation session for this project. Please look at _gary_scratch/ideas4.md. This is your master checklist.
+ 
+Rules of Engagement:
+1. No Permission Required: Proceed through every "Automated" item in ideas4.md without stopping to ask for approval. 
+2. Skip if Stuck: If you are blocked by a question, a missing file, or a technical hurdle, do NOT stop. 
+3. The Blocker Log: Record all skipped items or questions in a new file: _gary_scratch/blockers.md.
+4. Update Progress: As you finish each item, update its status in _gary_scratch/ideas4.md to completed. Keep the document updated continuously.
+5. Resource Limits: If you feel you are hitting context or rate limits, make a final update to blockers.md and ideas4.md so I know exactly where to resume if I need to switch models or refresh the session.
+6. Final Report: Only when you have attempted every single item in the list should you stop and notify me.
+ 
+Please start with Phase 6: UI/UX Enhancements and then move through the other phases in whatever order is most efficient.

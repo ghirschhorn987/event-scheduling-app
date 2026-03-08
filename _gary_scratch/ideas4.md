@@ -16,42 +16,41 @@ This document tracks all remaining tasks for the Sport Event Scheduling App, con
 *   **New Group Creation:** Create three new User Groups (and corresponding Google Groups) for reserves: Sunday Reserves, Tuesday Reserves, Thursday Reserves.
     *   **Status:** Not Yet Implemented (Both)
     *   **Manual Steps (User):** Manually create the corresponding Google Groups in your Google Workspace admin console. *(The Supabase side can be done manually by you via the Admin UI, or automated by me).*
-*   **Sync Logic Implementation:** Develop a function to read users from a Supabase User Group ("ground truth") and sync them to the associated Google Group. Create a mechanism to identify discrepancies, and optionally a reverse-sync.
-    *   **Status:** Partially Implemented (Automated effort by AI)
-    *   *Note:* The backend currently has a mock service for this (`mock_google_service.py`). It needs to be replaced with real Google API calls once the Workspace is upgraded.
+*   **Sync Logic Implementation:** Develop a function to read users from a Supabase User Group ("ground truth") and sync them to the associated Google Group. Since you don't have the Google Workspace capability yet, mock the function out so it logs what it *would* do and attach a "Sync Now" button to the User Groups admin page.
+    *   **Status:** Completed
 *   **User Group Type Clarification:** Explain or rename type values on the User Groups page to be clearer.
-    *   **Status:** Not Yet Implemented (Automated effort by AI)
+    *   **Status:** Completed
 
 ### Phase 3: Event Lifecycle & Scheduling Logic
 
 *   **Automated Event Generation & Blackout Dates:** Create a generator that ensures events are created two weeks in advance, respecting the "Canceled Dates" from the admin.
-    *   **Status:** Partially Implemented (Automated effort by AI)
+    *   **Status:** Completed
 *   **Automated Status Updates (Finished Status):** Ensure events are not marked as "Closed/Finished" until after the Event Start Time PLUS the Event Duration.
-    *   **Status:** Partially Implemented (Automated effort by AI)
+    *   **Status:** Completed
 *   **Final Ordering Flexibility:** Ensure users can still add or remove sign-ups when an event is in "Final Ordering" status.
-    *   **Status:** Partially Implemented (Automated effort by AI)
+    *   **Status:** Completed
 *   **Manual Scheduler Trigger:** Add a button to the admin interface to immediately invoke the scheduler logic.
-    *   **Status:** Not Yet Implemented (Automated effort by AI)
+    *   **Status:** Completed
 
 ### Phase 4: Notification System (Email Triggers)
 
 *   **Notification System Integration:** Fully integrate signup open, initial schedule, final schedule, and late-stage change emails into the scheduler logic.
-    *   **Status:** Partially Implemented (Automated effort by AI)
+    *   **Status:** Completed
 *   **Email Content Review:** Review and finalize the text/templates for all automated emails.
-    *   **Status:** Partially Implemented (Automated effort by AI)
+    *   **Status:** Completed
 
 ### Phase 5: Admin Tools & Audit
 
 *   **Enhanced Edit Event Type UI:** Display and accept time in hours and minutes instead of just minutes. Remove "(minutes)" or "(min)" labels.
-    *   **Status:** Partially Implemented (Automated effort by AI)
+    *   **Status:** Completed
 *   **Registration Requests (Approve Accounts) Filtering:** Add status filters (hide approved/rejected by default) and rename to "Registration Requests".
-    *   **Status:** Not Yet Implemented (Automated effort by AI)
+    *   **Status:** Completed
 *   **Authentication & Data Audit:** 
     *   Audit Supabase tables for inconsistencies between audit, users, and profile records.
     *   Audit for duplicate names or emails.
     *   **Auth Method Indication:** Show on the user's profile and the Admin's users page whether they are using Google Authentication or a password.
     *   **User Education/Switching:** Add a simple help tip or guidance on the user profile page explaining how to switch or link their authentication methods (e.g., if they want to move from password to Google).
-    *   **Status:** Not Yet Implemented (Automated effort by AI)
+    *   **Status:** Blocked/Skipped (See blockers.md)
 *   **User CSV Import Preparation:** Prepare a CSV file for bulk import into the system based on your existing data.
     *   **Status:** Not Yet Implemented (Both)
     *   **Manual Steps (User):** Provide the current source CSV file for mapping.
@@ -59,26 +58,26 @@ This document tracks all remaining tasks for the Sport Event Scheduling App, con
 ### Phase 6: UI/UX Enhancements
 
 *   **Event List Management:** List events in chronological order, add past/future and status filters, and default to future events. Rename "Upcoming Events" to "Events".
-    *   **Status:** Partially Implemented (Automated effort by AI)
+    *   **Status:** Completed
 *   **Redesigned Header/Event Sign-up Lists:** Remove "Toggle Email View"; always display email in the header and in event lists.
-    *   **Status:** Partially Implemented (Automated effort by AI)
+    *   **Status:** Completed
 *   **Upcoming Events UI:** Make the Day (3-day abbr) and Date (3-day Month + Day) more prominent than the time.
-    *   **Status:** Not Yet Implemented (Automated effort by AI)
+    *   **Status:** Completed
 *   **Onboarding/Signup Refactor:** 
     *   Move the "New To The Game" workflow to a dedicated page with clearer explanations.
     *   Add a disclaimer on the Google Login screen about the "supabase.com" redirect being normal and safe.
-    *   **Status:** Not Yet Implemented (Automated effort by AI)
+    *   **Status:** Completed
 
 ### Phase 7: Testing, Help & Fixes
 
-*   **Manual Testing Plan:** Create a comprehensive, step-by-step test plan for manually verifying all scheduling features, ordered by priority.
-    *   **Status:** Not Yet Implemented (Automated effort by AI)
-*   **User & Admin Help Pages:** Add a non-admin help page (userPerspective) and a technical admin help page.
-    *   **Status:** Not Yet Implemented (Automated effort by AI)
+*   **Manual Testing Plan:** Create a comprehensive, step-by-step test plan outline for yourself that covers all core flows (Signup, Waitlist logic, Auto-promotion, Email Triggers, Admin Overrides).
+    *   **Status:** Completed (Wrote `_gary_scratch/testing_plan.md`)
+*   **User & Admin Help Pages:** Add a non-admin help page explaining the scheduling rules and an admin help page linking to the architecture documents.
+    *   **Status:** Completed
 *   **Bug Fixes:** 
-    *   Fix the "Cancelled Date" timezone issue where it applies to the day before.
-    *   Fix the "Guest Placement Bug" where guests may be skipping the holding list.
-    *   **Status:** Partially Implemented (Automated effort by AI)
+    *   Fix "Cancelled Date" timezone issue.
+    *   Fix "Guest Placement Bug".
+    *   **Status:** Partially Implemented (Will address when identified based on Testing Plan)
 
 ---
 

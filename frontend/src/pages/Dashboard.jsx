@@ -13,7 +13,6 @@ export default function Dashboard({ session }) {
     const [refreshTrigger, setRefreshTrigger] = useState(0)
     const [showGuestForm, setShowGuestForm] = useState(false)
     const [guestName, setGuestName] = useState('')
-    const [showEmailPreview, setShowEmailPreview] = useState(false)
 
     // Fetch data
     useEffect(() => {
@@ -305,7 +304,7 @@ export default function Dashboard({ session }) {
     // Layout
     return (
         <>
-            <Header session={session} showEmailPreview={showEmailPreview} />
+            <Header session={session} />
             <div className="dashboard-container max-w-2xl mx-auto p-4">
                 {/* Back link removed as it is in Header */}
 
@@ -327,9 +326,6 @@ export default function Dashboard({ session }) {
                                 <h2 className="text-2xl font-bold">{nextEvent.name}</h2>
                                 <p className="text-gray-400 text-sm md:text-base">{safeDate(nextEvent.event_date)}</p>
                             </div>
-                            <button onClick={() => setShowEmailPreview(!showEmailPreview)} className="text-xs bg-purple-600/30 text-purple-300 border border-purple-500/50 px-3 py-1 rounded mt-2 md:mt-0 hover:bg-purple-600 hover:text-white transition-colors">
-                                Toggle Email View
-                            </button>
                         </header>
 
                         {isCanceled && (
@@ -446,7 +442,7 @@ export default function Dashboard({ session }) {
                                             <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
                                                 <span className="flex-1">
                                                     <div>{i + 1}. {s.is_guest ? <span className="text-blue-300">Guest: {s.guest_name} <span className="text-xs text-gray-500">(Sponsor: {s.profiles?.name})</span></span> : (s.profiles?.name || 'Unknown')}</div>
-                                                    {showEmailPreview && !s.is_guest && s.profiles?.email && (
+                                                    {!s.is_guest && s.profiles?.email && (
                                                         <div className="text-xs text-gray-500 ml-4 font-mono">{s.profiles.email}</div>
                                                     )}
                                                 </span>
@@ -468,7 +464,7 @@ export default function Dashboard({ session }) {
                                             <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
                                                 <span className="flex-1">
                                                     <div>{i + 1}. {s.is_guest ? <span className="text-blue-300">Guest: {s.guest_name} <span className="text-xs text-gray-500">(Sponsor: {s.profiles?.name})</span></span> : (s.profiles?.name || 'Unknown')}</div>
-                                                    {showEmailPreview && !s.is_guest && s.profiles?.email && (
+                                                    {!s.is_guest && s.profiles?.email && (
                                                         <div className="text-xs text-gray-500 ml-4 font-mono">{s.profiles.email}</div>
                                                     )}
                                                 </span>
@@ -502,7 +498,7 @@ export default function Dashboard({ session }) {
                                                 <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
                                                     <span className="flex-1">
                                                         <div>{nextEvent.status === 'OPEN_FOR_RESERVES' ? '-' : (i + 1) + '.'} {s.is_guest ? <span className="text-blue-300">Guest: {s.guest_name} <span className="text-xs text-gray-500">(Sponsor: {s.profiles?.name})</span></span> : (s.profiles?.name || 'Unknown')}</div>
-                                                        {showEmailPreview && !s.is_guest && s.profiles?.email && (
+                                                        {!s.is_guest && s.profiles?.email && (
                                                             <div className="text-xs text-gray-500 ml-4 font-mono">{s.profiles.email}</div>
                                                         )}
                                                     </span>

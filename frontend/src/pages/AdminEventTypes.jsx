@@ -31,6 +31,43 @@ const AdminEventTypes = ({ session }) => {
         duration_minutes: 120
     })
 
+    const handleTimeChange = (field, hours, minutes) => {
+        const parsedHours = parseInt(hours) || 0
+        const parsedMinutes = parseInt(minutes) || 0
+        setFormData(prev => ({ ...prev, [field]: parsedHours * 60 + parsedMinutes }))
+    }
+
+    const renderTimeInput = (label, field) => {
+        const val = formData[field] || 0
+        const hours = Math.floor(val / 60)
+        const minutes = val % 60
+
+        return (
+            <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">{label}</label>
+                <div className="flex gap-2 items-center">
+                    <input
+                        type="number"
+                        min="0"
+                        value={hours.toString()}
+                        onChange={(e) => handleTimeChange(field, e.target.value, minutes)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                    <span className="text-gray-400 text-sm">h</span>
+                    <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={minutes.toString()}
+                        onChange={(e) => handleTimeChange(field, hours, e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                    <span className="text-gray-400 text-sm">m</span>
+                </div>
+            </div>
+        )
+    }
+
     useEffect(() => {
         fetchData()
     }, [])
@@ -367,61 +404,17 @@ const AdminEventTypes = ({ session }) => {
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-300 mb-2">Duration (minutes) *</label>
-                                    <input
-                                        type="number"
-                                        value={formData.duration_minutes}
-                                        onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })}
-                                        required
-                                        min="1"
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                                    />
-                                </div>
+                                {renderTimeInput("Duration", "duration_minutes")}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-300 mb-2">Roster Open (minutes)</label>
-                                    <input
-                                        type="number"
-                                        value={formData.roster_sign_up_open_minutes}
-                                        onChange={(e) => setFormData({ ...formData, roster_sign_up_open_minutes: parseInt(e.target.value) })}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-300 mb-2">Reserve Open (minutes)</label>
-                                    <input
-                                        type="number"
-                                        value={formData.reserve_sign_up_open_minutes}
-                                        onChange={(e) => setFormData({ ...formData, reserve_sign_up_open_minutes: parseInt(e.target.value) })}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                                    />
-                                </div>
+                                {renderTimeInput("Roster Open", "roster_sign_up_open_minutes")}
+                                {renderTimeInput("Reserve Open", "reserve_sign_up_open_minutes")}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-300 mb-2">Initial Reserve Scheduling (min)</label>
-                                    <input
-                                        type="number"
-                                        value={formData.initial_reserve_scheduling_minutes}
-                                        onChange={(e) => setFormData({ ...formData, initial_reserve_scheduling_minutes: parseInt(e.target.value) })}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-300 mb-2">Final Reserve Scheduling (min)</label>
-                                    <input
-                                        type="number"
-                                        value={formData.final_reserve_scheduling_minutes}
-                                        onChange={(e) => setFormData({ ...formData, final_reserve_scheduling_minutes: parseInt(e.target.value) })}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                                    />
-                                </div>
+                                {renderTimeInput("Initial Reserve Scheduling", "initial_reserve_scheduling_minutes")}
+                                {renderTimeInput("Final Reserve Scheduling", "final_reserve_scheduling_minutes")}
                             </div>
 
                             <div>

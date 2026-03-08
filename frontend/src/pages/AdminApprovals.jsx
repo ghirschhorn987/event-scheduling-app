@@ -10,6 +10,7 @@ const AdminDashboard = ({ session }) => {
     const [error, setError] = useState(null)
     const [processing, setProcessing] = useState(null) // ID of request being processed
 
+    const [statusFilter, setStatusFilter] = useState('ACTIVE') // 'ACTIVE', 'ALL', 'APPROVED', 'DECLINED'
     const [selectedGroupsMap, setSelectedGroupsMap] = useState({})
 
     const toggleGroup = (reqId, groupName) => {
@@ -140,6 +141,12 @@ const AdminDashboard = ({ session }) => {
         </div>
     )
 
+    const filteredRequests = requests.filter(req => {
+        if (statusFilter === 'ALL') return true;
+        if (statusFilter === 'ACTIVE') return req.status !== 'APPROVED' && req.status !== 'DECLINED';
+        return req.status === statusFilter;
+    });
+
     return (
         <div className="dashboard-container">
             <Header session={session} />
@@ -147,17 +154,28 @@ const AdminDashboard = ({ session }) => {
                 <Link to="/admin" className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1 mb-2">
                     <span>&larr;</span> Back to Admin Hub
                 </Link>
-                <h1 className="text-3xl font-bold">Approve Accounts</h1>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <h1 className="text-3xl font-bold">Registration Requests</h1>
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="bg-slate-800 border border-slate-700 text-white rounded px-3 py-1.5 text-sm outline-none focus:border-blue-500 transition-colors"
+                    >
+                        <option value="ACTIVE">Active (Pending/Info Needed)</option>
+                        <option value="PENDING">Pending Only</option>
+                        <option value="APPROVED">Approved</option>
+                        <option value="DECLINED">Declined</option>
+                        <option value="ALL">All Requests</option>
+                    </select>
+                </div>
             </div>
 
             <section className="admin-section">
-                <h2>Pending Registration Requests</h2>
-
-                {requests.length === 0 ? (
-                    <p className="text-gray-400">No pending requests.</p>
+                {filteredRequests.length === 0 ? (
+                    <p className="text-gray-400">No requests match the current filter.</p>
                 ) : (
                     <div className="space-y-4">
-                        {requests.map(req => (
+                        {filteredRequests.map(req => (
                             <div key={req.id} className="bg-slate-800 p-4 rounded shadow border border-slate-700">
                                 <div className="flex flex-wrap gap-4 justify-between items-start">
                                     <div className="flex-1 min-w-[300px]">
@@ -168,8 +186,8 @@ const AdminDashboard = ({ session }) => {
                                         <p className="text-gray-300 mb-1 flex items-center">
                                             <strong>Status:</strong>
                                             <span className={`ml-2 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${req.status === 'APPROVED' ? 'bg-emerald-600 text-white' :
-                                                    req.status === 'DECLINED' ? 'bg-red-600 text-white' :
-                                                        req.status === 'PENDING' ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'
+                                                req.status === 'DECLINED' ? 'bg-red-600 text-white' :
+                                                    req.status === 'PENDING' ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'
                                                 }`}>
                                                 {req.status}
                                             </span>
