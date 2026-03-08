@@ -13,6 +13,7 @@ export default function Dashboard({ session }) {
     const [refreshTrigger, setRefreshTrigger] = useState(0)
     const [showGuestForm, setShowGuestForm] = useState(false)
     const [guestName, setGuestName] = useState('')
+    const [showEmailPreview, setShowEmailPreview] = useState(false)
 
     // Fetch data
     useEffect(() => {
@@ -88,7 +89,7 @@ export default function Dashboard({ session }) {
                     // 3. Get Signups
                     const { data: signupData, error: signupError } = await supabase
                         .from('event_signups')
-                        .select('*, profiles(name)')
+                        .select('*, profiles(name, email)')
                         .eq('event_id', event.id)
                         .order('created_at', { ascending: true }) // approximate ordering
 
@@ -304,7 +305,7 @@ export default function Dashboard({ session }) {
     // Layout
     return (
         <>
-            <Header session={session} />
+            <Header session={session} showEmailPreview={showEmailPreview} />
             <div className="dashboard-container max-w-2xl mx-auto p-4">
                 {/* Back link removed as it is in Header */}
 
@@ -326,7 +327,9 @@ export default function Dashboard({ session }) {
                                 <h2 className="text-2xl font-bold">{nextEvent.name}</h2>
                                 <p className="text-gray-400 text-sm md:text-base">{safeDate(nextEvent.event_date)}</p>
                             </div>
-                            {/* Sign Out button removed as it is in the main Header */}
+                            <button onClick={() => setShowEmailPreview(!showEmailPreview)} className="text-xs bg-purple-600/30 text-purple-300 border border-purple-500/50 px-3 py-1 rounded mt-2 md:mt-0 hover:bg-purple-600 hover:text-white transition-colors">
+                                Toggle Email View
+                            </button>
                         </header>
 
                         {isCanceled && (
@@ -441,8 +444,11 @@ export default function Dashboard({ session }) {
                                         .sort((a, b) => (a.sequence_number || 9999) - (b.sequence_number || 9999))
                                         .map((s, i) => (
                                             <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
-                                                <span>
-                                                    {i + 1}. {s.is_guest ? <span className="text-blue-300">Guest: {s.guest_name} <span className="text-xs text-gray-500">(Sponsor: {s.profiles?.name})</span></span> : (s.profiles?.name || 'Unknown')}
+                                                <span className="flex-1">
+                                                    <div>{i + 1}. {s.is_guest ? <span className="text-blue-300">Guest: {s.guest_name} <span className="text-xs text-gray-500">(Sponsor: {s.profiles?.name})</span></span> : (s.profiles?.name || 'Unknown')}</div>
+                                                    {showEmailPreview && !s.is_guest && s.profiles?.email && (
+                                                        <div className="text-xs text-gray-500 ml-4 font-mono">{s.profiles.email}</div>
+                                                    )}
                                                 </span>
                                                 {s.user_id === session.user.id && s.is_guest && (
                                                     <button onClick={() => handleDelete(s.id)} className="text-red-400 hover:text-red-300 text-xs ml-2 border border-red-500/30 px-2 py-0.5 rounded bg-red-500/10">Remove</button>
@@ -460,8 +466,11 @@ export default function Dashboard({ session }) {
                                         .sort((a, b) => (a.sequence_number || 9999) - (b.sequence_number || 9999))
                                         .map((s, i) => (
                                             <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
-                                                <span>
-                                                    {i + 1}. {s.is_guest ? <span className="text-blue-300">Guest: {s.guest_name} <span className="text-xs text-gray-500">(Sponsor: {s.profiles?.name})</span></span> : (s.profiles?.name || 'Unknown')}
+                                                <span className="flex-1">
+                                                    <div>{i + 1}. {s.is_guest ? <span className="text-blue-300">Guest: {s.guest_name} <span className="text-xs text-gray-500">(Sponsor: {s.profiles?.name})</span></span> : (s.profiles?.name || 'Unknown')}</div>
+                                                    {showEmailPreview && !s.is_guest && s.profiles?.email && (
+                                                        <div className="text-xs text-gray-500 ml-4 font-mono">{s.profiles.email}</div>
+                                                    )}
                                                 </span>
                                                 {s.user_id === session.user.id && s.is_guest && (
                                                     <button onClick={() => handleDelete(s.id)} className="text-red-400 hover:text-red-300 text-xs ml-2 border border-red-500/30 px-2 py-0.5 rounded bg-red-500/10">Remove</button>
@@ -491,8 +500,11 @@ export default function Dashboard({ session }) {
                                             })
                                             .map((s, i) => (
                                                 <li key={s.id} className="py-1 border-b last:border-0 flex justify-between">
-                                                    <span>
-                                                        {nextEvent.status === 'OPEN_FOR_RESERVES' ? '-' : (i + 1) + '.'} {s.is_guest ? <span className="text-blue-300">Guest: {s.guest_name} <span className="text-xs text-gray-500">(Sponsor: {s.profiles?.name})</span></span> : (s.profiles?.name || 'Unknown')}
+                                                    <span className="flex-1">
+                                                        <div>{nextEvent.status === 'OPEN_FOR_RESERVES' ? '-' : (i + 1) + '.'} {s.is_guest ? <span className="text-blue-300">Guest: {s.guest_name} <span className="text-xs text-gray-500">(Sponsor: {s.profiles?.name})</span></span> : (s.profiles?.name || 'Unknown')}</div>
+                                                        {showEmailPreview && !s.is_guest && s.profiles?.email && (
+                                                            <div className="text-xs text-gray-500 ml-4 font-mono">{s.profiles.email}</div>
+                                                        )}
                                                     </span>
                                                     {s.user_id === session.user.id && s.is_guest && (
                                                         <button onClick={() => handleDelete(s.id)} className="text-red-400 hover:text-red-300 text-xs ml-2 border border-red-500/30 px-2 py-0.5 rounded bg-red-500/10">Remove</button>

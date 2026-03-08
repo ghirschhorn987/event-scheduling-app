@@ -6,6 +6,7 @@ import Header from '../components/Header'
 const AdminGroups = ({ session }) => {
     const [groups, setGroups] = useState([])
     const [loading, setLoading] = useState(true)
+    const [syncing, setSyncing] = useState({}) // {groupId: true/false}
     const [error, setError] = useState(null)
     const navigate = useNavigate()
 
@@ -31,6 +32,30 @@ const AdminGroups = ({ session }) => {
             setError(err.message)
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleSync = async (groupId) => {
+        setSyncing({ ...syncing, [groupId]: true })
+        try {
+            const sessionData = await supabase.auth.getSession()
+            const token = sessionData.data.session?.access_token
+
+            const res = await fetch(`/api/admin/groups/${groupId}/sync`, {
+                method: "POST",
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const json = await res.json()
+            if (json.status === "success") {
+                alert(`Sync Result: ${json.summary}\n\nCheck backend logs for full details.`)
+            } else {
+                alert("Error: " + (json.detail || "Sync failed"))
+            }
+        } catch (e) {
+            alert("Network error during sync")
+            console.error(e)
+        } finally {
+            setSyncing({ ...syncing, [groupId]: false })
         }
     }
 
@@ -61,6 +86,7 @@ const AdminGroups = ({ session }) => {
                         <thead>
                             <tr className="bg-slate-900/50 text-gray-300 text-xs uppercase tracking-wider">
                                 <th className="p-4 border-b border-slate-700">Group Name</th>
+                                <th className="p-4 border-b border-slate-700">Type</th>
                                 <th className="p-4 border-b border-slate-700">Description</th>
                                 <th className="p-4 border-b border-slate-700 text-center">Users</th>
                                 <th className="p-4 border-b border-slate-700">Google Group ID</th>
@@ -73,6 +99,11 @@ const AdminGroups = ({ session }) => {
                                 <tr key={group.id} className="hover:bg-slate-700/30 transition-colors">
                                     <td className="p-4">
                                         <div className="font-bold text-white">{group.name}</div>
+                                    </td>
+                                    <td className="p-4">
+                                        <span className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-xs font-medium whitespace-nowrap">
+                                            {group.group_type ? group.group_type.replace(/_/g, ' ') : "OTHER"}
+                                        </span>
                                     </td>
                                     <td className="p-4">
                                         <div className="text-gray-400 text-sm max-w-xs md:max-w-md truncate">
@@ -99,12 +130,21 @@ const AdminGroups = ({ session }) => {
                                         </div>
                                     </td>
                                     <td className="p-4 text-right">
-                                        <button
-                                            onClick={() => navigate(`/admin/groups/${group.id}`)}
-                                            className="inline-flex items-center bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-md active:scale-95 whitespace-nowrap"
-                                        >
-                                            Edit Details
-                                        </button>
+                                        <div className="flex justify-end gap-2">
+                                            <button
+                                                onClick={() => handleSync(group.id)}
+                                                disabled={syncing[group.id]}
+                                                className={`px-3 py-1 rounded text-xs font-bold transition-colors ${syncing[group.id] ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}
+                                            >
+                                                {syncing[group.id] ? 'Syncing...' : 'Sync'}
+                                            </button>
+                                            <button
+                                                onClick={() => navigate(`/admin/groups/${group.id}`)}
+                                                className="bg-slate-800 hover:bg-slate-700 text-gray-300 px-3 py-1 rounded text-xs font-bold transition-colors"
+                                            >
+                                                Details
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

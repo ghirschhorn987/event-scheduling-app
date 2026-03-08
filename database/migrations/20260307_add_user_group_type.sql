@@ -1,0 +1,3 @@
+CREATE TYPE user_group_type AS ENUM ('EVENT_ELIGIBILITY', 'APPLICATION_ROLE', 'USER_CHARACTERISTIC', 'OTHER');
+
+ALTER TABLE user_groups ADD COLUMN group_type user_group_type DEFAULT 'OTHER';

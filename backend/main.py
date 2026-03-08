@@ -10,7 +10,12 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from db import supabase
-from models import SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate, GroupMemberAction, GroupMembersAction, UserGroupsUpdate, UserGroupMetadataUpdate, EventTypeCreate, EventTypeUpdate
+from models import (
+    SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate,
+    GroupMemberAction, GroupMembersAction, UserGroupsUpdate, UserGroupMetadataUpdate,
+    EventTypeCreate, EventTypeUpdate, EventStatusUpdate, CancelledDate
+)
+from mock_google_service import sync_to_google
 from logic import enrich_event, randomize_holding_queue, promote_from_holding, check_signup_eligibility, determine_event_status, resequence_holding, parse_interval_to_minutes, generate_future_events
 
 app = FastAPI()
@@ -200,7 +205,9 @@ async def list_user_groups(request: Request):
             "name": row["name"],
             "description": row["description"],
             "google_group_id": row.get("google_group_id"),
+            "group_email": row.get("group_email"),
             "guest_limit": row.get("guest_limit", 0),
+            "group_type": row.get("group_type", "OTHER"),
             "user_count": count
         })
     return {"status": "success", "data": data}
@@ -218,6 +225,7 @@ async def update_user_group(group_id: str, body: UserGroupMetadataUpdate, reques
     if body.google_group_id is not None: update_data["google_group_id"] = body.google_group_id
     if body.group_email is not None: update_data["group_email"] = body.group_email
     if body.guest_limit is not None: update_data["guest_limit"] = body.guest_limit
+    if body.group_type is not None: update_data["group_type"] = body.group_type
 
     if not update_data:
         return {"status": "success", "message": "No fields to update"}
@@ -235,6 +243,19 @@ async def update_user_group(group_id: str, body: UserGroupMetadataUpdate, reques
     except Exception as e:
         print(f"Error updating user group: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/admin/groups/{group_id}/sync")
+async def trigger_group_sync(group_id: str, request: Request):
+    """
+    Trigger a sync of Supabase group members to Google Groups (Mocked).
+    """
+    await get_current_admin(request)
+    
+    res = await sync_to_google(group_id)
+    if res.get("status") == "error":
+        raise HTTPException(status_code=500, detail=res.get("message"))
+        
+    return res
 
 @app.get("/api/admin/groups/{group_id}/members")
 async def list_group_members(group_id: str, request: Request):
@@ -1255,7 +1276,7 @@ async def trigger_schedule(request: Request):
     if now.hour == 8 and now.minute < 5:
         print("Daily trigger reached. Generating future events...")
         try:
-            generated_count = generate_future_events(supabase, weeks_to_generate=4)
+            generated_count = generate_future_events(supabase, days_ahead_to_ensure=14)
             print(f"Generated {generated_count} new events.")
         except Exception as e:
             print(f"Error during scheduled event generation: {e}")

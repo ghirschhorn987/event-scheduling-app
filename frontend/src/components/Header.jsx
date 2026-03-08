@@ -2,7 +2,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useEffect, useState } from 'react'
 
-export default function Header({ session }) {
+export default function Header({ session, showEmailPreview }) {
     const navigate = useNavigate()
     const location = useLocation()
     const [userName, setUserName] = useState('')
@@ -77,9 +77,20 @@ export default function Header({ session }) {
                 <div className="flex items-center gap-8">
                     {session ? (
                         <>
-                            <span className="text-sm text-gray-300 whitespace-nowrap">
-                                {userName || session.user.email}
-                            </span>
+                            {showEmailPreview ? (
+                                <div className="flex flex-col items-end">
+                                    <span className="text-sm font-bold text-gray-300 whitespace-nowrap">
+                                        {userName || 'Unknown Name'}
+                                    </span>
+                                    <span className="text-xs text-gray-500 whitespace-nowrap">
+                                        {session.user.email}
+                                    </span>
+                                </div>
+                            ) : (
+                                <span className="text-sm text-gray-300 whitespace-nowrap">
+                                    {userName || session.user.email}
+                                </span>
+                            )}
                             <button
                                 onClick={handleSignOut}
                                 className="text-sm text-red-500 hover:text-red-400 font-medium whitespace-nowrap"

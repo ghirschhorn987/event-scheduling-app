@@ -20,7 +20,8 @@ const AdminGroupDetail = ({ session }) => {
         description: "",
         google_group_id: "",
         group_email: "",
-        guest_limit: 0
+        guest_limit: 0,
+        group_type: "OTHER"
     })
 
     useEffect(() => {
@@ -35,7 +36,8 @@ const AdminGroupDetail = ({ session }) => {
                 description: group.description || "",
                 google_group_id: group.google_group_id || "",
                 group_email: group.group_email || "",
-                guest_limit: group.guest_limit || 0
+                guest_limit: group.guest_limit || 0,
+                group_type: group.group_type || "OTHER"
             })
         }
     }, [group])
@@ -309,6 +311,19 @@ const AdminGroupDetail = ({ session }) => {
                                             className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
                                         />
                                     </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">Group Type</label>
+                                        <select
+                                            value={editForm.group_type}
+                                            onChange={(e) => setEditForm({ ...editForm, group_type: e.target.value })}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                        >
+                                            <option value="EVENT_ELIGIBILITY">Event Eligibility</option>
+                                            <option value="APPLICATION_ROLE">Application Role</option>
+                                            <option value="USER_CHARACTERISTIC">User Characteristic</option>
+                                            <option value="OTHER">Other</option>
+                                        </select>
+                                    </div>
 
                                     <div className="flex gap-2 pt-2">
                                         <button
@@ -327,7 +342,9 @@ const AdminGroupDetail = ({ session }) => {
                                                         name: group.name || "",
                                                         description: group.description || "",
                                                         google_group_id: group.google_group_id || "",
-                                                        group_email: group.group_email || ""
+                                                        group_email: group.group_email || "",
+                                                        guest_limit: group.guest_limit || 0,
+                                                        group_type: group.group_type || "OTHER"
                                                     })
                                                 }
                                             }}
@@ -361,6 +378,10 @@ const AdminGroupDetail = ({ session }) => {
                                     <div>
                                         <div className="text-xs text-gray-500">Guest Limit</div>
                                         <div className="text-white font-mono text-xs">{group.guest_limit || 0}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-gray-500">Group Type</div>
+                                        <div className="text-white font-mono text-xs">{group.group_type ? group.group_type.replace(/_/g, ' ') : "OTHER"}</div>
                                     </div>
                                 </div>
                             )}

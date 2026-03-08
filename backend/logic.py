@@ -305,34 +305,46 @@ def resequence_holding(queue):
         })
     return updates
 
-def generate_future_events(supabase_client, weeks_to_generate=4):
+def generate_future_events(supabase_client, days_ahead_to_ensure=14):
     """
     Auto-generates future events based on existing event types.
+    Ensures that events exist for the next `days_ahead_to_ensure` days.
+    Respects the cancelled_dates (blackout dates) table.
     """
     import pytz
     
-    # 1. Provide Event Types mapping
+    # 1. Fetch Event Types
     try:
         res = supabase_client.table("event_types").select("*").execute()
         if not res.data:
             print("No event types found for auto-generation.")
             return 0
-        
         event_types = res.data
     except Exception as e:
         print(f"Error fetching event types for auto-generation: {e}")
         return 0
 
-    # 2. Generate Events
-    start_date = datetime.now()
+    # 2. Fetch Blackout Dates
+    try:
+        cancelled_res = supabase_client.table("cancelled_dates").select("date").execute()
+        blackout_dates = {str(row["date"]) for row in cancelled_res.data}
+    except Exception as e:
+        print(f"Error fetching cancelled dates: {e}")
+        blackout_dates = set()
+
+    # 3. Generate Events
+    now = datetime.now(timezone.utc)
     tz_name = "America/Los_Angeles"
     local_tz = pytz.timezone(tz_name)
     
     new_events_count = 0
     
+    # We want to check from tomorrow until (now + days_ahead_to_ensure)
+    # But event types are tied to specific Days of Week.
+    
     for t in event_types:
         tid = t["id"]
-        db_dow = t["day_of_week"]
+        db_dow = t["day_of_week"] # 0=Sun, 6=Sat
         target_time_str = t["time_of_day"]
         
         # Parse time
@@ -340,40 +352,40 @@ def generate_future_events(supabase_client, weeks_to_generate=4):
         h = int(time_parts[0])
         m = int(time_parts[1]) if len(time_parts) > 1 else 0
         
-        # Python's datetime.weekday(): Mon=0, Sun=6. DB stores: Sun=0, Sat=6
-        py_dow = 6 if db_dow == 0 else db_dow - 1
-        
-        days_ahead = py_dow - start_date.weekday()
-        if days_ahead < 0:
-             days_ahead += 7
+        # We check every day for the next N days
+        for day_offset in range(1, days_ahead_to_ensure + 1):
+            check_date = now + timedelta(days=day_offset)
+            # Python weekday: Mon=0, Sun=6. DB: Sun=0, Sat=6
+            current_dow = (check_date.weekday() + 1) % 7 
             
-        first_match_date = start_date + timedelta(days=days_ahead)
-        
-        for w in range(weeks_to_generate):
-            event_date = first_match_date + timedelta(weeks=w)
-            
-            # Localize datetime
-            dt_local = local_tz.localize(datetime(
-                event_date.year, event_date.month, event_date.day,
-                h, m, 0
-            ))
-            
-            # Convert to ISO for DB
-            iso_str = dt_local.isoformat()
-            
-            try:
-                payload = {
-                    "event_type_id": tid,
-                    "event_date": iso_str,
-                    "status": "NOT_YET_OPEN" 
-                }
-                # Check if it already exists
-                existing = supabase_client.table("events").select("id").eq("event_type_id", tid).eq("event_date", iso_str).execute()
-                if not existing.data:
-                    res = supabase_client.table("events").insert(payload).execute()
-                    if res.data:
-                        new_events_count += 1
-            except Exception as e:
-                print(f"Error creating event auto-generation: {e}")
+            if current_dow == db_dow:
+                # Match found! Localize it.
+                dt_local = local_tz.localize(datetime(
+                    check_date.year, check_date.month, check_date.day,
+                    h, m, 0
+                ))
+                iso_str = dt_local.isoformat()
+                date_only_str = dt_local.date().isoformat()
+                
+                # Check for Blackout
+                status = "NOT_YET_OPEN"
+                if date_only_str in blackout_dates:
+                    print(f"Blackout date detected for {date_only_str}. Creating as CANCELLED.")
+                    status = "CANCELLED"
+                
+                try:
+                    payload = {
+                        "event_type_id": tid,
+                        "event_date": iso_str,
+                        "status": status
+                    }
+                    # Check if it already exists
+                    existing = supabase_client.table("events").select("id").eq("event_type_id", tid).eq("event_date", iso_str).execute()
+                    if not existing.data:
+                        res = supabase_client.table("events").insert(payload).execute()
+                        if res.data:
+                            new_events_count += 1
+                except Exception as e:
+                    print(f"Error creating event auto-generation: {e}")
 
     return new_events_count

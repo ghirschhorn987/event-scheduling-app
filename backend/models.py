@@ -15,6 +15,12 @@ class ScheduleResponse(BaseModel):
     message: str
     updated_count: int
 
+class UserGroupType(str, Enum):
+    EVENT_ELIGIBILITY = "EVENT_ELIGIBILITY"
+    APPLICATION_ROLE = "APPLICATION_ROLE"
+    USER_CHARACTERISTIC = "USER_CHARACTERISTIC"
+    OTHER = "OTHER"
+
 class EventStatus(str, Enum):
     NOT_YET_OPEN = "NOT_YET_OPEN"
     OPEN_FOR_ROSTER = "OPEN_FOR_ROSTER"
@@ -89,6 +95,7 @@ class UserGroupMetadataUpdate(BaseModel):
     google_group_id: Optional[str] = None
     group_email: Optional[str] = None
     guest_limit: Optional[int] = None
+    group_type: Optional[str] = None
 
 class EventTypeCreate(BaseModel):
     name: str

@@ -2,6 +2,7 @@
 CREATE TYPE event_status AS ENUM ('SCHEDULED', 'CANCELLED', 'NOT_YET_OPEN', 'OPEN_FOR_ROSTER', 'OPEN_FOR_RESERVES', 'PRELIMINARY_ORDERING', 'FINAL_ORDERING', 'FINISHED');
 CREATE TYPE list_type AS ENUM ('EVENT', 'WAITLIST', 'WAITLIST_HOLDING');
 CREATE TYPE event_status_determinant AS ENUM ('AUTOMATIC', 'MANUAL');
+CREATE TYPE user_group_type AS ENUM ('EVENT_ELIGIBILITY', 'APPLICATION_ROLE', 'USER_CHARACTERISTIC', 'OTHER');
 
 -- User Groups
 CREATE TABLE user_groups (
@@ -10,7 +11,8 @@ CREATE TABLE user_groups (
   description TEXT,
   google_group_id TEXT,
   group_email TEXT,
-  guest_limit INTEGER DEFAULT 0
+  guest_limit INTEGER DEFAULT 0,
+  group_type user_group_type DEFAULT 'OTHER'
 );
 
 -- Profiles (Public user data linked to auth.users)
