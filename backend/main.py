@@ -845,13 +845,16 @@ async def signup(body: SignupRequest, request: Request):
             
             if not body.guest_name:
                 raise HTTPException(status_code=400, detail="Guest name is required.")
-             
         target_list = eligibility["target_list"]
         
         if body.is_guest:
-            # Guests always go to waitlist
-            target_list = "WAITLIST" if target_list == "EVENT" else target_list
-            eligibility["tier"] = 0 # Top priority in waitlist
+            # Guests get top priority (Tier 0)
+            eligibility["tier"] = 0
+            
+            # If the normal flow would put a Tier 1 person in EVENT, guests go there too (or Waitlist if full)
+            # If the normal flow is WAITLIST_HOLDING, guests go there too.
+            # The previous logic forced guests to WAITLIST always, which breaks the holding phase.
+            pass
         
         # If target is EVENT, we still need to check if it's full (Overflow to WAITLIST)
         # But if target is WAITLIST_HOLDING, we just put them there.
