@@ -80,6 +80,11 @@ class RegistrationUpdate(BaseModel):
     note: Optional[str] = None
     message: Optional[str] = None # Message to user for DECLINE or INFO actions
 
+class BulkUserCreate(BaseModel):
+    full_name: str
+    email: str
+    groups: Optional[List[str]] = []
+
 class GroupMemberAction(BaseModel):
     email: str
 
@@ -134,3 +139,19 @@ class CancelledDate(BaseModel):
 class EventStatusUpdate(BaseModel):
     status: str
     status_determinant: str # MANUAL or AUTOMATIC
+
+class AdminEventUserAdd(BaseModel):
+    profile_id: Optional[str] = None
+    is_guest: bool = False
+    guest_name: Optional[str] = None
+    target_list: str  # "EVENT", "WAITLIST", "WAITLIST_HOLDING"
+
+class AdminEventUserReorderItem(BaseModel):
+    signup_id: str
+    sequence_number: int
+
+class AdminEventUserReorderRequest(BaseModel):
+    items: List[AdminEventUserReorderItem]
+
+class AdminEventUserMove(BaseModel):
+    target_list: str  # "EVENT", "WAITLIST", "WAITLIST_HOLDING"

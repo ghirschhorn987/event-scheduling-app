@@ -192,8 +192,8 @@ const AdminEvents = ({ session }) => {
                                             <td className="px-6 py-4">{event.event_type_name}</td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2 py-1 rounded text-xs font-bold ${event.status === 'CANCELLED' ? 'bg-red-500/20 text-red-400' :
-                                                        event.status === 'FINISHED' ? 'bg-gray-500/20 text-gray-400' :
-                                                            'bg-emerald-500/20 text-emerald-400'
+                                                    event.status === 'FINISHED' ? 'bg-gray-500/20 text-gray-400' :
+                                                        'bg-emerald-500/20 text-emerald-400'
                                                     }`}>
                                                     {event.status}
                                                 </span>
@@ -204,7 +204,7 @@ const AdminEvents = ({ session }) => {
                                                     {event.status_determinant}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-6 py-4 flex items-center gap-2">
                                                 <select
                                                     className="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white text-xs"
                                                     value={event.status}
@@ -214,6 +214,9 @@ const AdminEvents = ({ session }) => {
                                                         <option key={s} value={s}>{s}</option>
                                                     ))}
                                                 </select>
+                                                <Link to={`/admin/events/${event.id}`} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs font-medium transition-colors">
+                                                    Manage Users
+                                                </Link>
                                             </td>
                                         </tr>
                                     ))}

@@ -13,7 +13,7 @@ from db import supabase
 from models import (
     SignupRequest, ScheduleResponse, RegistrationRequest, RegistrationUpdate,
     GroupMemberAction, GroupMembersAction, UserGroupsUpdate, UserGroupMetadataUpdate,
-    EventTypeCreate, EventTypeUpdate, EventStatusUpdate, CancelledDate
+    EventTypeCreate, EventTypeUpdate, EventStatusUpdate, CancelledDate, BulkUserCreate
 )
 from mock_google_service import sync_to_google
 from logic import enrich_event, randomize_holding_queue, promote_from_holding, check_signup_eligibility, determine_event_status, resequence_holding, parse_interval_to_minutes, generate_future_events
@@ -357,6 +357,79 @@ async def update_profile_groups(profile_id: str, body: UserGroupsUpdate, request
         raise HTTPException(status_code=400, detail=str(e))
         
     return {"status": "success", "message": "Groups updated successfully"}
+
+@app.post("/api/admin/users/bulk-pre-approve")
+async def bulk_pre_approve_users(body: List[BulkUserCreate], request: Request):
+    admin = await get_current_admin(request)
+    
+    # 1. Map all group names to IDs
+    all_groups_res = supabase.table("user_groups").select("id, name").execute()
+    group_map = {g['name']: g['id'] for g in all_groups_res.data}
+    
+    success_count = 0
+    errors = []
+    
+    from email_service import email_service
+    
+    for user_data in body:
+        try:
+            user_email = user_data.email.strip().lower()
+            
+            # Check if profile already exists
+            profile_res = supabase.table("profiles").select("id").eq("email", user_email).execute()
+            
+            profile_id = None
+            if profile_res.data:
+                profile_id = profile_res.data[0]['id']
+            else:
+                # Create profile
+                new_profile = {
+                    "email": user_email,
+                    "name": user_data.full_name.strip() or 'User'
+                }
+                create_res = supabase.table("profiles").insert(new_profile).execute()
+                if create_res.data:
+                    profile_id = create_res.data[0]['id']
+            
+            if profile_id:
+                # Assign groups
+                if user_data.groups:
+                    group_inserts = []
+                    for g_name in user_data.groups:
+                        cl_name = g_name.strip()
+                        if cl_name in group_map:
+                            group_inserts.append({
+                                "profile_id": profile_id,
+                                "group_id": group_map[cl_name]
+                            })
+                    
+                    if group_inserts:
+                        # Clear and re-add groups to be safe without duplicating
+                        supabase.table("profile_groups").delete().eq("profile_id", profile_id).execute()
+                        supabase.table("profile_groups").insert(group_inserts).execute()
+                        
+                # Create a Registration Request record for history purposes
+                req_payload = {
+                    "email": user_email,
+                    "full_name": user_data.full_name.strip() or 'User',
+                    "affiliation": "Bulk Import",
+                    "status": "APPROVED",
+                    "admin_notes": "Added via CSV Bulk Import"
+                }
+                supabase.table("registration_requests").insert(req_payload).execute()
+
+                # Send Email
+                try:
+                    email_service.send_access_granted(user_email, user_data.full_name.strip() or 'User')
+                except Exception as e:
+                    print(f"Failed to send email to {user_email}: {e}")
+                    
+                success_count += 1
+                
+        except Exception as err:
+            errors.append(f"Failed for {user_data.email}: {str(err)}")
+            
+    return {"status": "success", "success_count": success_count, "errors": errors}
 
 @app.post("/api/admin/groups/{group_id}/members/batch")
 async def add_group_members_batch(group_id: str, body: GroupMembersAction, request: Request):
@@ -727,6 +800,135 @@ async def remove_cancelled_date(date_str: str, request: Request):
     except Exception as e:
          print(f"Error removing cancelled date: {e}")
          raise HTTPException(status_code=400, detail=f"Failed to remove date: {e}")
+
+from models import AdminEventUserAdd, AdminEventUserReorderRequest, AdminEventUserMove
+
+@app.get("/api/admin/events/{event_id}/users")
+async def list_admin_event_users(event_id: str, request: Request):
+    """
+    Fetch all signups for a specific event, enriched with user profile data.
+    """
+    await get_current_admin(request)
+    try:
+        res = supabase.table("event_signups").select("*, profiles(name, email)").eq("event_id", event_id).order("sequence_number").execute()
+        return {"status": "success", "data": res.data}
+    except Exception as e:
+        print(f"Error fetching event users: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to fetch users: {e}")
+
+@app.post("/api/admin/events/{event_id}/users")
+async def add_admin_event_user(event_id: str, body: AdminEventUserAdd, request: Request):
+    """
+    Add a user (by profile_id or as guest) to a specific list for an event.
+    """
+    await get_current_admin(request)
+    try:
+        # Get current max sequence for the target list
+        seq_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", event_id).eq("list_type", body.target_list).execute()
+        sequence = (seq_res.count or 0) + 1
+        
+        payload = {
+            "event_id": event_id,
+            "list_type": body.target_list,
+            "sequence_number": sequence,
+            "is_guest": body.is_guest,
+            "guest_name": body.guest_name
+        }
+        if body.profile_id:
+            payload["user_id"] = body.profile_id
+            
+        res = supabase.table("event_signups").insert(payload).execute()
+        return {"status": "success", "data": res.data[0]}
+    except Exception as e:
+        print(f"Error adding event user: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to add user: {e}")
+
+@app.delete("/api/admin/events/{event_id}/users/{signup_id}")
+async def remove_admin_event_user(event_id: str, signup_id: str, request: Request):
+    """
+    Remove a specific signup record and decrement subsequent sequence numbers.
+    """
+    await get_current_admin(request)
+    try:
+        # Fetch current to get list_type and sequence
+        current_res = supabase.table("event_signups").select("*").eq("id", signup_id).maybe_single().execute()
+        if not current_res.data:
+            raise HTTPException(status_code=404, detail="Signup not found")
+            
+        current_data = current_res.data
+        current_list = current_data["list_type"]
+        current_seq = current_data["sequence_number"]
+        
+        # Delete
+        supabase.table("event_signups").delete().eq("id", signup_id).execute()
+        
+        # Update sequences
+        to_update = supabase.table("event_signups").select("id, sequence_number").eq("event_id", event_id).eq("list_type", current_list).gt("sequence_number", current_seq).execute()
+        for row in to_update.data:
+            supabase.table("event_signups").update({"sequence_number": row["sequence_number"] - 1}).eq("id", row["id"]).execute()
+            
+        return {"status": "success", "message": "User removed from event"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error removing event user: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to remove user: {e}")
+
+@app.put("/api/admin/events/{event_id}/users/reorder")
+async def reorder_admin_event_users(event_id: str, body: AdminEventUserReorderRequest, request: Request):
+    """
+    Reorder users in a specific list.
+    """
+    await get_current_admin(request)
+    try:
+        # Let's do individual updates for safety
+        for item in body.items:
+            supabase.table("event_signups").update({"sequence_number": item.sequence_number}).eq("id", item.signup_id).execute()
+            
+        return {"status": "success", "message": "Users reordered"}
+    except Exception as e:
+        print(f"Error reordering event users: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to reorder users: {e}")
+
+@app.put("/api/admin/events/{event_id}/users/{signup_id}/move")
+async def move_admin_event_user(event_id: str, signup_id: str, body: AdminEventUserMove, request: Request):
+    """
+    Move a user to a different list type.
+    """
+    await get_current_admin(request)
+    try:
+        # Fetch current
+        current_res = supabase.table("event_signups").select("*").eq("id", signup_id).maybe_single().execute()
+        if not current_res.data:
+            raise HTTPException(status_code=404, detail="Signup not found")
+            
+        current_data = current_res.data
+        old_list = current_data["list_type"]
+        old_seq = current_data["sequence_number"]
+        new_list = body.target_list
+        
+        if old_list == new_list:
+            return {"status": "success", "message": "User already in target list"}
+            
+        # Get max seq for new list
+        seq_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", event_id).eq("list_type", new_list).execute()
+        new_seq = (seq_res.count or 0) + 1
+        
+        # Update user to new list and new seq
+        supabase.table("event_signups").update({
+            "list_type": new_list,
+            "sequence_number": new_seq
+        }).eq("id", signup_id).execute()
+        
+        # Decrement old list sequences
+        to_update = supabase.table("event_signups").select("id, sequence_number").eq("event_id", event_id).eq("list_type", old_list).gt("sequence_number", old_seq).execute()
+        for row in to_update.data:
+            supabase.table("event_signups").update({"sequence_number": row["sequence_number"] - 1}).eq("id", row["id"]).execute()
+            
+        return {"status": "success", "message": f"User moved to {new_list}"}
+    except Exception as e:
+        print(f"Error moving event user: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to move user: {e}")
 
 @app.post("/api/signup")
 async def signup(body: SignupRequest, request: Request):

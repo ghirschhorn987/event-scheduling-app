@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from .db import supabase
+from db import supabase
 
 def get_mock_google_members(google_group_id: str) -> List[str]:
     """

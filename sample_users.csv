@@ -1,0 +1,4 @@
+Name,Email,Groups
+John Doe,john.doe@example.com,Primary
+Jane Smith,jane.smith@example.com,"Primary;VIP"
+Test User,test.user@example.com,
