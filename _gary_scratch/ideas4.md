@@ -49,7 +49,8 @@ This document tracks all remaining tasks for the Sport Event Scheduling App, con
 *   **Authentication & Data Audit:** 
     *   Audit Supabase tables for inconsistencies between audit, users, and profile records.
     *   Audit for duplicate names or emails.
-    *   Show on users page whether someone is using Google Auth or a password. 
+    *   **Auth Method Indication:** Show on the user's profile and the Admin's users page whether they are using Google Authentication or a password.
+    *   **User Education/Switching:** Add a simple help tip or guidance on the user profile page explaining how to switch or link their authentication methods (e.g., if they want to move from password to Google).
     *   **Status:** Not Yet Implemented (Automated effort by AI)
 *   **User CSV Import Preparation:** Prepare a CSV file for bulk import into the system based on your existing data.
     *   **Status:** Not Yet Implemented (Both)
@@ -87,4 +88,3 @@ This document tracks all remaining tasks for the Sport Event Scheduling App, con
 3.  **Create Google Groups:** Manually create "Sunday Reserves", "Tuesday Reserves", and "Thursday Reserves" groups in your Workspace console.
 4.  **Hosting Migration:** Switch domain to `bethamhoops.skeddle.net`.
 5.  **CSV Source Data:** Provide the source CSV file for preparing the user import.
-6.  **Auth Method Education:** Help users understand how to check if they sign in via Google or password (if not already obvious).
