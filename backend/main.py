@@ -17,6 +17,7 @@ from models import (
 )
 from mock_google_service import sync_to_google
 from logic import enrich_event, randomize_holding_queue, promote_from_holding, check_signup_eligibility, determine_event_status, resequence_holding, parse_interval_to_minutes, generate_future_events
+from email_service import email_service
 
 app = FastAPI()
 
@@ -997,6 +998,25 @@ async def remove_signup(body: SignupRequest, request: Request):
                         "sequence_number": new_roster_seq
                     }).eq("id", next_person["id"]).execute()
                     
+                    # --- Phase 4 Notification System: Late-Stage Transfer ---
+                    if event.get("status") == "FINAL_ORDERING":
+                        try:
+                            # 1. Get dropout name
+                            dropout_profile = supabase.table("profiles").select("full_name").eq("id", current_data["user_id"]).single().execute()
+                            dropout_name = dropout_profile.data.get("full_name") if dropout_profile.data else "A player"
+                            
+                            # 2. Get promoted name
+                            promoted_profile = supabase.table("profiles").select("full_name").eq("id", next_person["user_id"]).single().execute()
+                            promoted_name = promoted_profile.data.get("full_name") if promoted_profile.data else "A waitlist player"
+                            
+                            # 3. Get all involved emails (EVENT + WAITLIST)
+                            res_emails = supabase.table("event_signups").select("profiles!inner(email)").eq("event_id", body.event_id).in_("list_type", ["EVENT", "WAITLIST"]).execute()
+                            all_emails = [row["profiles"]["email"] for row in res_emails.data if row.get("profiles") and row["profiles"].get("email")]
+                            
+                            email_service.send_late_stage_change_notification(event, dropout_name, promoted_name, all_emails)
+                        except Exception as email_err:
+                            print(f"Error sending late-stage promotion email: {email_err}")
+
                     # 5. Decrement Waitlist (Since #1 left)
                     wl_update_res = supabase.table("event_signups")\
                         .select("id, sequence_number")\
@@ -1139,6 +1159,18 @@ async def trigger_schedule(request: Request):
         # This ensures that if the process fails mid-way, the status remains in the old state (e.g. PRELIMINARY_ORDERING).
         # The next Cron run will see the old state + current time and try again.
         
+        # Helper to fetch group email
+        def get_group_email(group_id):
+            if not group_id: return None
+            res = supabase.table("user_groups").select("group_email").eq("id", group_id).single().execute()
+            return res.data.get("group_email") if res.data else None
+
+        # Helper to fetch user emails by signup list type
+        def get_signup_emails(event_id, list_types):
+            res = supabase.table("event_signups").select("profiles!inner(email)").eq("event_id", event_id).in_("list_type", list_types).execute()
+            if not res.data: return []
+            return [row["profiles"]["email"] for row in res.data if row.get("profiles") and row["profiles"].get("email")]
+
         if target_status == "PRELIMINARY_ORDERING" and current_status != "PRELIMINARY_ORDERING":
             # 1. Enter Preliminary Ordering: Randomize Holding Queue & Assign Sequence
             print(f"Entering Preliminary Ordering for Event {event['id']}: Randomizing Holding Queue...")
@@ -1180,6 +1212,15 @@ async def trigger_schedule(request: Request):
                     print(f"Updating Event Status to {target_status}...")
                     supabase.table("events").update({"status": target_status}).eq("id", event["id"]).execute()
                     
+                    try:
+                        # Email Trigger Phase 4: Initial Schedule Notification
+                        roster_group_email = get_group_email(event.get("roster_user_group"))
+                        # Anyone in EVENT, WAITLIST, or WAITLIST_HOLDING gets the email
+                        reserve_emails = get_signup_emails(event["id"], ["EVENT", "WAITLIST", "WAITLIST_HOLDING"])
+                        email_service.send_initial_schedule_notification(event, roster_group_email, reserve_emails)
+                    except Exception as e:
+                        print(f"Email error (Initial Schedule): {e}")
+
                     processed_count += 1
                     
                 except Exception as db_e:
@@ -1189,6 +1230,14 @@ async def trigger_schedule(request: Request):
                  # No one in holding? Just update status.
                  try:
                     supabase.table("events").update({"status": target_status}).eq("id", event["id"]).execute()
+                    
+                    try:
+                        roster_group_email = get_group_email(event.get("roster_user_group"))
+                        reserve_emails = get_signup_emails(event["id"], ["EVENT", "WAITLIST", "WAITLIST_HOLDING"])
+                        email_service.send_initial_schedule_notification(event, roster_group_email, reserve_emails)
+                    except Exception as e:
+                        print(f"Email error (Initial Schedule): {e}")
+                        
                     processed_count += 1
                  except Exception as e:
                     print(f"Error updating status to PRELIMINARY for {event['id']}: {e}")
@@ -1243,6 +1292,14 @@ async def trigger_schedule(request: Request):
                     print(f"Updating Event Status to {target_status}...")
                     supabase.table("events").update({"status": target_status}).eq("id", event["id"]).execute()
                     
+                    try:
+                        # Email Trigger Phase 4: Final Schedule Notification
+                        roster_group_email = get_group_email(event.get("roster_user_group"))
+                        lineup_emails = get_signup_emails(event["id"], ["EVENT", "WAITLIST"])
+                        email_service.send_final_schedule_notification(event, roster_group_email, lineup_emails)
+                    except Exception as e:
+                        print(f"Email error (Final Schedule): {e}")
+
                     processed_count += 1
                     promoted_count += len(update_list)
                     
@@ -1253,6 +1310,14 @@ async def trigger_schedule(request: Request):
                  # No one in holding? Just update status.
                  try:
                     supabase.table("events").update({"status": target_status}).eq("id", event["id"]).execute()
+                    
+                    try:
+                        roster_group_email = get_group_email(event.get("roster_user_group"))
+                        lineup_emails = get_signup_emails(event["id"], ["EVENT", "WAITLIST"])
+                        email_service.send_final_schedule_notification(event, roster_group_email, lineup_emails)
+                    except Exception as e:
+                        print(f"Email error (Final Schedule): {e}")
+
                     processed_count += 1
                  except Exception as e:
                     print(f"Error updating status to FINAL for {event['id']}: {e}")
@@ -1263,6 +1328,21 @@ async def trigger_schedule(request: Request):
             print(f"Executing Direct Update (Status Only update)...")
             try:
                 supabase.table("events").update({"status": target_status}).eq("id", event["id"]).execute()
+                
+                try:
+                    # Email Trigger Phase 4: Signup Opens
+                    if target_status == "OPEN_FOR_ROSTER" and current_status != "OPEN_FOR_ROSTER":
+                        roster_group_email = get_group_email(event.get("roster_user_group"))
+                        email_service.send_roster_open_notification(event, roster_group_email)
+                    elif target_status == "OPEN_FOR_RESERVES" and current_status != "OPEN_FOR_RESERVES":
+                        # Both T1 and T2 reserves get the email (send twice or combine)
+                        t1_email = get_group_email(event.get("reserve_first_priority_user_group"))
+                        t2_email = get_group_email(event.get("reserve_second_priority_user_group"))
+                        if t1_email: email_service.send_reserve_open_notification(event, t1_email)
+                        if t2_email and t2_email != t1_email: email_service.send_reserve_open_notification(event, t2_email)
+                except Exception as e:
+                    print(f"Email error (Window Open): {e}")
+
                 processed_count += 1
             except Exception as e:
                 print(f"Error updating status for {event['id']}: {e}")
