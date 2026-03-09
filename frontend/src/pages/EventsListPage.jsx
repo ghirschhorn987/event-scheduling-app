@@ -71,13 +71,47 @@ export default function EventsListPage({ session }) {
                         <span>ℹ️ Event Status Legend</span>
                         <span className="text-gray-500 group-open:rotate-180 transition-transform">▼</span>
                     </summary>
-                    <div className="px-4 pb-4 pt-1 text-xs md:text-sm grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-6">
-                        <div><span className="text-gray-400 font-bold block mb-0.5">Not Yet Open</span><span className="text-gray-500">Scheduling has not started.</span></div>
-                        <div><span className="text-green-400 font-bold block mb-0.5">Open for Roster</span><span className="text-gray-500">Priority roster members can sign up.</span></div>
-                        <div><span className="text-blue-400 font-bold block mb-0.5">Open for Reserves</span><span className="text-gray-500">Reserves can join the Holding Area.</span></div>
-                        <div><span className="text-yellow-400 font-bold block mb-0.5">Preliminary Ordering</span><span className="text-gray-500">Holding Area randomized; initial placements visible.</span></div>
-                        <div><span className="text-orange-400 font-bold block mb-0.5">Final Ordering</span><span className="text-gray-500">Placements are locked; First-come, first-served for remaining spots.</span></div>
-                        <div><span className="text-gray-400 font-bold block mb-0.5">Finished / Cancelled</span><span className="text-gray-500">Self-explanatory.</span></div>
+                    <div className="px-4 pb-6 pt-2 text-xs md:text-sm">
+                        <div className="relative border-l-2 border-slate-600 ml-2 pl-6 space-y-5">
+                            <div className="relative">
+                                <div className="absolute -left-[1.85rem] ring-4 ring-slate-800 top-1 h-3 w-3 bg-gray-500 rounded-full"></div>
+                                <span className="text-gray-400 font-bold block mb-0.5">1. Not Yet Open</span>
+                                <span className="text-gray-500">Scheduling has not started.</span>
+                            </div>
+                            <div className="relative">
+                                <div className="absolute -left-[1.85rem] ring-4 ring-slate-800 top-1 h-3 w-3 bg-green-500 rounded-full"></div>
+                                <span className="text-green-400 font-bold block mb-0.5">2. Open for Roster</span>
+                                <span className="text-gray-500">Priority roster members can sign up.</span>
+                            </div>
+                            <div className="relative">
+                                <div className="absolute -left-[1.85rem] ring-4 ring-slate-800 top-1 h-3 w-3 bg-blue-500 rounded-full"></div>
+                                <span className="text-blue-400 font-bold block mb-0.5">3. Open for Reserves</span>
+                                <span className="text-gray-500">Reserves can join the Holding Area.</span>
+                            </div>
+                            <div className="relative">
+                                <div className="absolute -left-[1.85rem] ring-4 ring-slate-800 top-1 h-3 w-3 bg-yellow-400 rounded-full"></div>
+                                <span className="text-yellow-400 font-bold block mb-0.5">4. Preliminary Ordering</span>
+                                <span className="text-gray-500">Holding Area randomized; initial placements visible.</span>
+                            </div>
+                            <div className="relative">
+                                <div className="absolute -left-[1.85rem] ring-4 ring-slate-800 top-1 h-3 w-3 bg-orange-400 rounded-full"></div>
+                                <span className="text-orange-400 font-bold block mb-0.5">5. Final Ordering</span>
+                                <span className="text-gray-500">Placements are locked; First-come, first-served for remaining spots.</span>
+                            </div>
+                            <div className="relative">
+                                <div className="absolute -left-[1.85rem] ring-4 ring-slate-800 top-1 h-3 w-3 bg-gray-400 rounded-full"></div>
+                                <span className="text-gray-400 font-bold block mb-0.5">6. Finished</span>
+                                <span className="text-gray-500">The event has concluded organically.</span>
+                            </div>
+                        </div>
+
+                        <div className="mt-6 pt-3 border-t border-slate-700/50 flex items-start gap-2">
+                            <div className="mt-1 h-2 w-2 bg-red-500 rounded-full shrink-0"></div>
+                            <div>
+                                <span className="text-red-400 font-bold block mb-0.5">Cancelled</span>
+                                <span className="text-gray-500">An exceptional override that stops the event at any point along the timeline.</span>
+                            </div>
+                        </div>
                     </div>
                 </details>
 

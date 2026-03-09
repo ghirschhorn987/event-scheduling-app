@@ -386,58 +386,7 @@ export default function Dashboard({ session }) {
                             </div>
                         </div>
 
-                        {/* Guest Section */}
-                        {maxGuestLimit > 0 && canJoin && !isCanceled && (
-                            <div className="bg-slate-800 p-4 rounded shadow mb-6 border border-slate-700">
-                                <div className="flex justify-between items-center mb-2">
-                                    <h3 className="font-bold text-white">Out-of-Town Guests</h3>
-                                    <span className="text-sm text-gray-400">
-                                        {userGuests.length} / {maxGuestLimit} Added
-                                    </span>
-                                </div>
 
-                                <div className="space-y-2 mb-3">
-                                    {userGuests.map(g => (
-                                        <div key={g.id} className="flex justify-between items-center text-sm bg-slate-700/50 px-3 py-1.5 rounded border border-slate-600">
-                                            <span className="text-white">{g.guest_name} <span className="text-xs text-gray-400">({g.list_type === 'EVENT' ? 'Signed Up' : g.list_type === 'WAITLIST_HOLDING' ? 'Holding Area' : 'Waitlist'})</span></span>
-                                            <button onClick={() => handleDelete(g.id)} className="text-red-400 hover:text-red-300 text-xs border border-red-500/30 px-2 py-0.5 rounded bg-red-500/10 transition-colors">Remove</button>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {userGuests.length < maxGuestLimit && !showGuestForm ? (
-                                    <button
-                                        onClick={() => setShowGuestForm(true)}
-                                        className="text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white px-3 py-1.5 rounded transition-colors border border-blue-500/50 mt-1"
-                                    >
-                                        + Add Guest
-                                    </button>
-                                ) : userGuests.length < maxGuestLimit && showGuestForm ? (
-                                    <div className="flex gap-2 mt-2">
-                                        <input
-                                            type="text"
-                                            placeholder="Guest Name"
-                                            value={guestName}
-                                            onChange={(e) => setGuestName(e.target.value)}
-                                            className="bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:ring-1 focus:ring-blue-500 flex-1"
-                                        />
-                                        <button
-                                            onClick={() => handleJoin(true, guestName)}
-                                            disabled={!guestName.trim()}
-                                            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-4 py-1.5 rounded text-sm transition-colors"
-                                        >
-                                            Add
-                                        </button>
-                                        <button
-                                            onClick={() => setShowGuestForm(false)}
-                                            className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-sm transition-colors"
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>
-                                ) : null}
-                            </div>
-                        )}
 
 
                         {/* Lists Display */}
@@ -520,6 +469,43 @@ export default function Dashboard({ session }) {
                                 </div>
                             )}
                         </div>
+
+                        {/* Guest Button Bottom */}
+                        {maxGuestLimit > 0 && tier === 1 && userSignup && !isCanceled && (
+                            <div className="mt-6 flex justify-center">
+                                {userGuests.length < maxGuestLimit && !showGuestForm ? (
+                                    <button
+                                        onClick={() => setShowGuestForm(true)}
+                                        className="text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white px-4 py-2 rounded transition-colors border border-blue-500/50"
+                                    >
+                                        + Add Out-of-Town Guest ({userGuests.length}/{maxGuestLimit})
+                                    </button>
+                                ) : userGuests.length < maxGuestLimit && showGuestForm ? (
+                                    <div className="flex gap-2 bg-slate-800 p-3 rounded border border-slate-700 w-full max-w-sm mx-auto">
+                                        <input
+                                            type="text"
+                                            placeholder="Guest Name"
+                                            value={guestName}
+                                            onChange={(e) => setGuestName(e.target.value)}
+                                            className="bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:ring-1 focus:ring-blue-500 flex-1"
+                                        />
+                                        <button
+                                            onClick={() => handleJoin(true, guestName)}
+                                            disabled={!guestName.trim()}
+                                            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-4 py-1.5 rounded text-sm transition-colors"
+                                        >
+                                            Add
+                                        </button>
+                                        <button
+                                            onClick={() => setShowGuestForm(false)}
+                                            className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-sm transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                ) : null}
+                            </div>
+                        )}
                     </>
                 )}
             </div>

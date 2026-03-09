@@ -885,16 +885,29 @@ async def remove_admin_event_user(event_id: str, signup_id: str, request: Reques
             raise HTTPException(status_code=404, detail="Signup not found")
             
         current_data = current_res.data
-        current_list = current_data["list_type"]
-        current_seq = current_data["sequence_number"]
         
-        # Delete
-        supabase.table("event_signups").delete().eq("id", signup_id).execute()
-        
-        # Update sequences
-        to_update = supabase.table("event_signups").select("id, sequence_number").eq("event_id", event_id).eq("list_type", current_list).gt("sequence_number", current_seq).execute()
-        for row in to_update.data:
-            supabase.table("event_signups").update({"sequence_number": row["sequence_number"] - 1}).eq("id", row["id"]).execute()
+        signups_to_remove_ids = [current_data["id"]]
+        if not current_data.get("is_guest"):
+            guests_res = supabase.table("event_signups").select("id").eq("event_id", event_id).eq("user_id", current_data["user_id"]).eq("is_guest", True).execute()
+            if guests_res.data:
+                signups_to_remove_ids.extend([g["id"] for g in guests_res.data])
+
+        for s_id in signups_to_remove_ids:
+            fresh_res = supabase.table("event_signups").select("*").eq("id", s_id).maybe_single().execute()
+            if not fresh_res.data:
+                continue
+
+            fresh_data = fresh_res.data
+            current_list = fresh_data["list_type"]
+            current_seq = fresh_data["sequence_number"]
+            
+            # Delete
+            supabase.table("event_signups").delete().eq("id", s_id).execute()
+            
+            # Update sequences
+            to_update = supabase.table("event_signups").select("id, sequence_number").eq("event_id", event_id).eq("list_type", current_list).gt("sequence_number", current_seq).execute()
+            for row in to_update.data:
+                supabase.table("event_signups").update({"sequence_number": row["sequence_number"] - 1}).eq("id", row["id"]).execute()
             
         return {"status": "success", "message": "User removed from event"}
     except HTTPException:
@@ -1078,42 +1091,54 @@ async def signup(body: SignupRequest, request: Request):
                 raise HTTPException(status_code=400, detail="Guest name is required.")
         target_list = eligibility["target_list"]
         
-        if body.is_guest:
-            # Guests get top priority (Tier 0)
-            eligibility["tier"] = 0
-            
-            # If the normal flow would put a Tier 1 person in EVENT, guests go there too (or Waitlist if full)
-            # If the normal flow is WAITLIST_HOLDING, guests go there too.
-            # The previous logic forced guests to WAITLIST always, which breaks the holding phase.
-            pass
-        
-        # If target is EVENT, we still need to check if it's full (Overflow to WAITLIST)
-        # But if target is WAITLIST_HOLDING, we just put them there.
-        
         sequence = 0
         final_list_type = target_list
-        
-        if target_list == "EVENT":
-            # Check capacity
-            roster_count = fetch_counts(body.event_id)
-            max_signups = event['max_signups']
+
+        if body.is_guest:
+            # New specific guest routing logic:
+            event_status = event.get('status')
             
-            if roster_count < max_signups:
-                final_list_type = "EVENT"
-                sequence = roster_count + 1
-            else:
+            if event_status in ["OPEN_FOR_ROSTER", "OPEN_FOR_RESERVES", "PRELIMINARY_ORDERING"]:
+                # Guest goes to WAITLIST specifically, not EVENT/HOLDING.
+                # Since we sort by sequence, we just stick them at the bottom of the Waitlist.
+                # (Later, they will be processed before reserves in the scheduler, but for now they just go to WAITLIST).
                 final_list_type = "WAITLIST"
-                # Get waitlist count
                 wl_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST").execute()
                 sequence = (wl_res.count or 0) + 1
-        elif target_list == "WAITLIST_HOLDING":
-            final_list_type = "WAITLIST_HOLDING"
-            # Sequence for holding can heavily rely on created_at, but we can store an incrementing seq too if we want.
-            # logic.py sorts by created_at for window 2. 
-            # Let's just set sequence to 0 or something for now, or use max + 1 if we want to track insertion order explicitly.
-            final_list_type = "WAITLIST_HOLDING"
-            seq_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST_HOLDING").execute()
-            sequence = (seq_res.count or 0) + 1
+            elif event_status == "FINAL_ORDERING":
+                # Regular FCFS flow
+                roster_count = fetch_counts(body.event_id)
+                max_signups = event['max_signups']
+                if roster_count < max_signups:
+                    final_list_type = "EVENT"
+                    sequence = roster_count + 1
+                else:
+                    final_list_type = "WAITLIST"
+                    wl_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST").execute()
+                    sequence = (wl_res.count or 0) + 1
+            else:
+                # Fallback, just force to waitlist
+                final_list_type = "WAITLIST"
+                wl_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST").execute()
+                sequence = (wl_res.count or 0) + 1
+            
+            eligibility["tier"] = 0 # Top priority for sorting technically
+        else:
+            # Regular user processing
+            if target_list == "EVENT":
+                roster_count = fetch_counts(body.event_id)
+                max_signups = event['max_signups']
+                if roster_count < max_signups:
+                    final_list_type = "EVENT"
+                    sequence = roster_count + 1
+                else:
+                    final_list_type = "WAITLIST"
+                    wl_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST").execute()
+                    sequence = (wl_res.count or 0) + 1
+            elif target_list == "WAITLIST_HOLDING":
+                final_list_type = "WAITLIST_HOLDING"
+                seq_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST_HOLDING").execute()
+                sequence = (seq_res.count or 0) + 1
 
         # 3. Execute Insert
         payload = {
@@ -1176,92 +1201,91 @@ async def remove_signup(body: SignupRequest, request: Request):
             return {"status": "success", "message": "Signup not found (already removed?)"}
 
         current_data = current_signup_res.data
-        current_list_type = current_data["list_type"]
-        current_seq = current_data["sequence_number"]
-        
-        # 2. Delete the signup
-        supabase.table("event_signups").delete().eq("id", current_data["id"]).execute()
-        
-        # 3. Decrement sequences for the same list
-        # Find all users in same list with higher sequence
-        to_update_res = supabase.table("event_signups")\
-            .select("id, sequence_number")\
-            .eq("event_id", body.event_id)\
-            .eq("list_type", current_list_type)\
-            .gt("sequence_number", current_seq)\
-            .execute()
-            
-        # Bulk update or loop? Supabase doesn't support 'sequence_number - 1' update easily via client
-        for row in to_update_res.data:
-            new_seq = row['sequence_number'] - 1
-            supabase.table("event_signups").update({"sequence_number": new_seq}).eq("id", row['id']).execute()
-            
-        # 4. Auto-Promote if needed (Steady State)
-        # If removed from EVENT, and Roster has space, promote check.
-        if current_list_type == "EVENT":
-            # Check capacity
-            event = fetch_event(body.event_id)
-            current_roster_count = fetch_counts(body.event_id)
-            
-            if current_roster_count < event['max_signups']:
-                print(f"Space opened in Roster ({current_roster_count} < {event['max_signups']}). Checking Waitlist...")
-                
-                # Fetch Top Waitlist (Seq 1)
-                # Note: We expect standard Waitlist to start at 1 and be contiguous
-                next_up_res = supabase.table("event_signups")\
-                    .select("*")\
-                    .eq("event_id", body.event_id)\
-                    .eq("list_type", "WAITLIST")\
-                    .order("sequence_number", desc=False)\
-                    .limit(1)\
-                    .execute()
-                    
-                if next_up_res.data:
-                    next_person = next_up_res.data[0]
-                    print(f"Promoting user {next_person['user_id']} from WAITLIST to EVENT")
-                    
-                    # New Sequence = current_roster_count + 1 (since we just decremented everyone, count matches end)
-                    # Actually roster count includes the new vacancy? No, fetch_counts counts rows.
-                    # We deleted one. So if max=3, we had 3, deleted -> 2.
-                    # New person becomes 3. 
-                    new_roster_seq = current_roster_count + 1
-                    
-                    # Update List Type and Sequence
-                    supabase.table("event_signups").update({
-                        "list_type": "EVENT",
-                        "sequence_number": new_roster_seq
-                    }).eq("id", next_person["id"]).execute()
-                    
-                    # --- Phase 4 Notification System: Late-Stage Transfer ---
-                    if event.get("status") == "FINAL_ORDERING":
-                        try:
-                            # 1. Get dropout name
-                            dropout_profile = supabase.table("profiles").select("full_name").eq("id", current_data["user_id"]).single().execute()
-                            dropout_name = dropout_profile.data.get("full_name") if dropout_profile.data else "A player"
-                            
-                            # 2. Get promoted name
-                            promoted_profile = supabase.table("profiles").select("full_name").eq("id", next_person["user_id"]).single().execute()
-                            promoted_name = promoted_profile.data.get("full_name") if promoted_profile.data else "A waitlist player"
-                            
-                            # 3. Get all involved emails (EVENT + WAITLIST)
-                            res_emails = supabase.table("event_signups").select("profiles!inner(email)").eq("event_id", body.event_id).in_("list_type", ["EVENT", "WAITLIST"]).execute()
-                            all_emails = [row["profiles"]["email"] for row in res_emails.data if row.get("profiles") and row["profiles"].get("email")]
-                            
-                            email_service.send_late_stage_change_notification(event, dropout_name, promoted_name, all_emails)
-                        except Exception as email_err:
-                            print(f"Error sending late-stage promotion email: {email_err}")
 
-                    # 5. Decrement Waitlist (Since #1 left)
-                    wl_update_res = supabase.table("event_signups")\
-                        .select("id, sequence_number")\
+        # 2. Determine signups to remove
+        signups_to_remove_ids = [current_data["id"]]
+        if not current_data.get("is_guest"):
+            guests_res = supabase.table("event_signups").select("id").eq("event_id", body.event_id).eq("user_id", target_profile_id).eq("is_guest", True).execute()
+            if guests_res.data:
+                signups_to_remove_ids.extend([g["id"] for g in guests_res.data])
+
+        # 3. Process each removal carefully to preserve list continuous sequences
+        for s_id in signups_to_remove_ids:
+            fresh_res = supabase.table("event_signups").select("*").eq("id", s_id).maybe_single().execute()
+            if not fresh_res.data:
+                continue
+
+            fresh_data = fresh_res.data
+            current_list_type = fresh_data["list_type"]
+            current_seq = fresh_data["sequence_number"]
+            
+            # Delete the signup
+            supabase.table("event_signups").delete().eq("id", fresh_data["id"]).execute()
+            
+            # Decrement sequences for the same list
+            to_update_res = supabase.table("event_signups")\
+                .select("id, sequence_number")\
+                .eq("event_id", body.event_id)\
+                .eq("list_type", current_list_type)\
+                .gt("sequence_number", current_seq)\
+                .execute()
+                
+            for row in to_update_res.data:
+                new_seq = row['sequence_number'] - 1
+                supabase.table("event_signups").update({"sequence_number": new_seq}).eq("id", row['id']).execute()
+                
+            # 4. Auto-Promote if needed (Steady State)
+            if current_list_type == "EVENT":
+                event = fetch_event(body.event_id)
+                current_roster_count = fetch_counts(body.event_id)
+                
+                if current_roster_count < event['max_signups']:
+                    print(f"Space opened in Roster ({current_roster_count} < {event['max_signups']}). Checking Waitlist...")
+                    
+                    next_up_res = supabase.table("event_signups")\
+                        .select("*")\
                         .eq("event_id", body.event_id)\
                         .eq("list_type", "WAITLIST")\
-                        .gt("sequence_number", 1)\
+                        .order("sequence_number", desc=False)\
+                        .limit(1)\
                         .execute()
                         
-                    for row in wl_update_res.data:
-                        new_seq = row['sequence_number'] - 1
-                        supabase.table("event_signups").update({"sequence_number": new_seq}).eq("id", row['id']).execute()
+                    if next_up_res.data:
+                        next_person = next_up_res.data[0]
+                        print(f"Promoting user {next_person['user_id']} from WAITLIST to EVENT")
+                        
+                        new_roster_seq = current_roster_count + 1
+                        
+                        supabase.table("event_signups").update({
+                            "list_type": "EVENT",
+                            "sequence_number": new_roster_seq
+                        }).eq("id", next_person["id"]).execute()
+                        
+                        if event.get("status") == "FINAL_ORDERING":
+                            try:
+                                dropout_profile = supabase.table("profiles").select("full_name").eq("id", fresh_data["user_id"]).single().execute()
+                                dropout_name = dropout_profile.data.get("full_name") if dropout_profile.data else "A player"
+                                
+                                promoted_profile = supabase.table("profiles").select("full_name").eq("id", next_person["user_id"]).single().execute()
+                                promoted_name = promoted_profile.data.get("full_name") if promoted_profile.data else "A waitlist player"
+                                
+                                res_emails = supabase.table("event_signups").select("profiles!inner(email)").eq("event_id", body.event_id).in_("list_type", ["EVENT", "WAITLIST"]).execute()
+                                all_emails = [row["profiles"]["email"] for row in res_emails.data if row.get("profiles") and row["profiles"].get("email")]
+                                
+                                email_service.send_late_stage_change_notification(event, dropout_name, promoted_name, all_emails)
+                            except Exception as email_err:
+                                print(f"Error sending late-stage promotion email: {email_err}")
+
+                        wl_update_res = supabase.table("event_signups")\
+                            .select("id, sequence_number")\
+                            .eq("event_id", body.event_id)\
+                            .eq("list_type", "WAITLIST")\
+                            .gt("sequence_number", 1)\
+                            .execute()
+                            
+                        for row in wl_update_res.data:
+                            new_seq = row['sequence_number'] - 1
+                            supabase.table("event_signups").update({"sequence_number": new_seq}).eq("id", row['id']).execute()
 
         return {"status": "success", "message": "Signup removed"}
     except Exception as e:
