@@ -7,22 +7,18 @@ import os
 # Ensure backend matches path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from email_service import EmailService
+# Mock the environment variable BEFORE importing email_service
+with patch.dict(os.environ, {"RESEND_API_KEY": "re_test_key"}):
+    from email_service import EmailService
 
 @pytest.fixture
 def email_service():
-    # Patch the module-level variable to enable "real" sending logic (which we mock)
-    with patch('email_service.RESEND_API_KEY', 're_test_key'):
-        yield EmailService()
+    return EmailService()
 
 def test_send_acknowledgement(email_service):
-    with patch('resend.Emails.send') as mock_send:
+    with patch('email_service.resend.Emails.send') as mock_send:
         mock_send.return_value = {"id": "test-id"}
         
-        # We need to ensure resend.api_key is set because EmailService.__init__ might have run before patching
-        import resend
-        resend.api_key = "re_test"
-
         resp = email_service.send_user_acknowledgement("test@example.com", "John Doe")
         assert resp is not None
         mock_send.assert_called_once()
@@ -32,20 +28,17 @@ def test_send_acknowledgement(email_service):
         assert "John Doe" in sent_params['html']
 
 def test_send_rejection_reason(email_service):
-    with patch('resend.Emails.send') as mock_send:
+    with patch('email_service.resend.Emails.send') as mock_send:
         mock_send.return_value = {"id": "test-id"}
-        import resend
-        resend.api_key = "re_test"
         
         resp = email_service.send_rejection_reason("test@example.com", "Spam")
         assert resp is not None
         mock_send.assert_called_once()
 
+
 def test_send_access_granted(email_service):
-    with patch('resend.Emails.send') as mock_send:
+    with patch('email_service.resend.Emails.send') as mock_send:
         mock_send.return_value = {"id": "test-id"}
-        import resend
-        resend.api_key = "re_test"
         
         resp = email_service.send_access_granted("test@example.com", "Jane Doe")
         assert resp is not None

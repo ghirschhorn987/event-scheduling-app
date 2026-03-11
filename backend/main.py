@@ -60,7 +60,32 @@ async def get_current_user(request: Request):
         user_res = supabase.auth.get_user(token)
         if not user_res.user:
              raise HTTPException(status_code=401, detail="Invalid Token")
-        return user_res.user
+        
+        user = user_res.user
+        
+        # --- Fallback Profile Linking ---
+        # The DB trigger (on_auth_user_created) should link profiles to auth users,
+        # but it's unreliable for Google OAuth signups. This fallback ensures
+        # the link is repaired on next login if the trigger failed.
+        try:
+            profile_check = supabase.table("profiles").select("id, auth_user_id").eq("auth_user_id", user.id).maybe_single().execute()
+            
+            if not profile_check.data:
+                # No profile linked by auth_user_id — try to find one by email
+                email_check = supabase.table("profiles").select("id, auth_user_id").eq("email", user.email).maybe_single().execute()
+                
+                if email_check.data and not email_check.data.get("auth_user_id"):
+                    # Found an unlinked profile with matching email — link it now
+                    supabase.table("profiles").update({
+                        "auth_user_id": user.id,
+                        "auth_method": "google" if (getattr(user, 'app_metadata', {}) or {}).get("provider") == "google" else "email"
+                    }).eq("id", email_check.data["id"]).execute()
+                    print(f"AUTO-LINKED: Profile {email_check.data['id']} -> Auth User {user.id} ({user.email})")
+        except Exception as link_err:
+            # Non-fatal: don't block login if linking fails
+            print(f"Warning: Fallback profile linking failed for {user.email}: {link_err}")
+        
+        return user
     except Exception as e:
         print(f"Auth Error: {e}")
         raise HTTPException(status_code=401, detail="Invalid Authentication")
@@ -383,7 +408,8 @@ async def bulk_pre_approve_users(body: List[BulkUserCreate], request: Request):
                 # Create profile
                 new_profile = {
                     "email": user_email,
-                    "name": user_data.full_name.strip() or 'User'
+                    "name": user_data.full_name.strip() or 'User',
+                    "auth_method": "email"
                 }
                 create_res = supabase.table("profiles").insert(new_profile).execute()
                 if create_res.data:
@@ -525,7 +551,8 @@ async def update_request(body: RegistrationUpdate, request: Request):
                 # Create new profile
                 new_profile = {
                     "email": user_email,
-                    "name": original.data.get('full_name') or 'User'
+                    "name": original.data.get('full_name') or 'User',
+                    "auth_method": "email"
                 }
                 # Auth ID is null initially
                 create_res = supabase.table("profiles").insert(new_profile).execute()

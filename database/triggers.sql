@@ -1,5 +1,10 @@
--- Trigger to create a profile when a new user signs up
+-- Trigger to link a pre-provisioned profile when a new auth user is created
 -- Run this in your Supabase SQL Editor
+--
+-- NOTE: This trigger is a best-effort optimization. The primary linking 
+-- mechanism is the backend fallback in get_current_user() which repairs
+-- unlinked profiles at login time. This is necessary because AFTER INSERT
+-- triggers on auth.users are unreliable for Google OAuth signups.
 
 -- 1. Create a function that handles the new user
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -7,7 +12,7 @@ RETURNS trigger AS $$
 DECLARE
   existing_profile_id UUID;
 BEGIN
-  -- 1. Check if a profile already exists for this email (Pre-provisioned)
+  -- Check if a profile already exists for this email (Pre-provisioned)
   SELECT id INTO existing_profile_id FROM public.profiles WHERE email = new.email;
 
   IF existing_profile_id IS NOT NULL THEN
@@ -15,11 +20,10 @@ BEGIN
     UPDATE public.profiles
     SET auth_user_id = new.id
     WHERE id = existing_profile_id;
-  ELSE
-    -- No pre-provisioned profile found.
-    -- HARD BLOCK: Prevent auth.users record from being created.
-    RAISE EXCEPTION 'ACCESS_DENIED: This email has not been approved for access. Please request access at /request-access';
   END IF;
+  -- If no profile found, do nothing. The user will either:
+  -- 1. Get linked via the backend fallback on next login
+  -- 2. Get blocked by the backend if they were never approved
 
   RETURN new;
 END;

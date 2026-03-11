@@ -217,6 +217,7 @@ const AdminUsers = ({ session }) => {
                             <tr className="bg-slate-900/50 text-gray-400 text-xs uppercase tracking-widest font-bold">
                                 <th className="p-5 border-b border-slate-700">Name</th>
                                 <th className="p-5 border-b border-slate-700">Email</th>
+                                <th className="p-5 border-b border-slate-700">Auth Method</th>
                                 <th className="p-5 border-b border-slate-700 text-right">Actions</th>
                             </tr>
                         </thead>
@@ -235,6 +236,23 @@ const AdminUsers = ({ session }) => {
                                         </td>
                                         <td className="p-5">
                                             <div className="text-gray-400 text-sm font-mono">{p.email}</div>
+                                        </td>
+                                        <td className="p-5">
+                                            {p.auth_method === 'google' ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                                        <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
+                                                    </svg>
+                                                    Google
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-700/50 text-slate-300 border border-slate-600">
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                    </svg>
+                                                    Email
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="p-5 text-right">
                                             <Link

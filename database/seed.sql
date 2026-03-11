@@ -1,21 +1,21 @@
 -- Insert User Groups
 -- We use ON CONFLICT DO NOTHING to avoid duplicates if running multiple times (though simple script might error without constraint on name if not unique, schema says unique)
-INSERT INTO user_groups (name, description)
+INSERT INTO user_groups (name, description, group_type)
 VALUES 
-  ('SuperAdmin', 'Has full unrestricted access to all parts of the system.'),
-  ('Admin', 'Initially has the same access as SuperAdmin, but this may change in the future.'),
-  ('FirstPriority', 'Used by certain system functionality to determine order among users (e.g., scheduling) — grants first priority.'),
-  ('SecondPriority', 'Used by certain system functionality to determine order among users — grants second priority.'),
-  ('BethAmAffiliated', 'Notes those users who have an affiliation with Beth Am.'),
+  ('SuperAdmin', 'Has full unrestricted access to all parts of the system.', 'APPLICATION_ROLE'),
+  ('Admin', 'Initially has the same access as SuperAdmin, but this may change in the future.', 'APPLICATION_ROLE'),
+  ('FirstPriority', 'Used by certain system functionality to determine order among users (e.g., scheduling) — grants first priority.', 'EVENT_ELIGIBILITY'),
+  ('SecondPriority', 'Used by certain system functionality to determine order among users — grants second priority.', 'EVENT_ELIGIBILITY'),
+  ('BethAmAffiliated', 'Notes those users who have an affiliation with Beth Am.', 'USER_CHARACTERISTIC'),
   
   -- New Groups
-  ('SundayBasketball', 'Roster for Sunday games'),
-  ('TuesdayBasketball', 'Roster for Tuesday games'),
-  ('ThursdayBasketball', 'Roster for Thursday games'),
-  ('SundayBasketballReserves', 'Reserves for Sunday games'),
-  ('TuesdayBasketballReserves', 'Reserves for Tuesday games'),
-  ('ThursdayBasketballReserves', 'Reserves for Thursday games')
-ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description;
+  ('SundayBasketball', 'Roster for Sunday games', 'EVENT_ELIGIBILITY'),
+  ('TuesdayBasketball', 'Roster for Tuesday games', 'EVENT_ELIGIBILITY'),
+  ('ThursdayBasketball', 'Roster for Thursday games', 'EVENT_ELIGIBILITY'),
+  ('SundayBasketballReserves', 'Reserves for Sunday games', 'EVENT_ELIGIBILITY'),
+  ('TuesdayBasketballReserves', 'Reserves for Tuesday games', 'EVENT_ELIGIBILITY'),
+  ('ThursdayBasketballReserves', 'Reserves for Thursday games', 'EVENT_ELIGIBILITY')
+ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description, group_type = EXCLUDED.group_type;
 
 -- Insert Event Type (Tuesday Basketball)
 -- We need to capture the ID to use it for the event

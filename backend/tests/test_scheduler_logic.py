@@ -7,7 +7,7 @@ import sys
 sys.modules["db"] = MagicMock()
 sys.modules["db"].supabase = MagicMock()
 
-from backend.logic import determine_event_status, check_signup_eligibility, randomize_holding_queue
+from logic import determine_event_status, check_signup_eligibility, randomize_holding_queue
 
 class TestSchedulerLogic(unittest.TestCase):
     

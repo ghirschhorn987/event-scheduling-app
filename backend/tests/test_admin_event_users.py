@@ -60,13 +60,33 @@ def test_add_admin_event_user(mock_supabase):
 def test_remove_admin_event_user(mock_supabase):
     # Mock current signup
     current_res = MagicMock()
-    current_res.data = {"list_type": "EVENT", "sequence_number": 2}
+    current_res.data = {"id": "signup_2", "user_id": "user_2", "is_guest": False, "list_type": "EVENT", "sequence_number": 2}
     mock_supabase.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = current_res
+    
+    # Mock guests (none)
+    guests_res = MagicMock()
+    guests_res.data = []
+    
+    # Needs to handle the sequence of calls: 
+    # 1. select for current setup
+    # 2. select for guests
+    # 3. select for fresh data during loop
+    # We can use side_effect or just return a generic that has everything
+    # Let's just use side effect for the first execute() which is the maybe_single
+    mock_supabase.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.side_effect = [
+        current_res, # For current_res
+        current_res  # For fresh_res inside loop
+    ]
+    
+    mock_supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.eq.return_value.execute.return_value = guests_res
     
     # Mock to_update
     update_res = MagicMock()
     update_res.data = [{"id": "signup_3", "sequence_number": 3}]
     mock_supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.gt.return_value.execute.return_value = update_res
+    
+    # Mock delete output
+    mock_supabase.table.return_value.delete.return_value.eq.return_value.execute.return_value.data = [{"id": "signup_2"}]
     
     response = client.delete("/api/admin/events/evt_1/users/signup_2")
     assert response.status_code == 200

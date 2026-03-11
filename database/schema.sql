@@ -1,5 +1,5 @@
 -- Enum types
-CREATE TYPE event_status AS ENUM ('SCHEDULED', 'CANCELLED', 'NOT_YET_OPEN', 'OPEN_FOR_ROSTER', 'OPEN_FOR_RESERVES', 'PRELIMINARY_ORDERING', 'FINAL_ORDERING', 'FINISHED');
+CREATE TYPE event_status AS ENUM ('NOT_YET_OPEN', 'OPEN_FOR_ROSTER', 'OPEN_FOR_RESERVES', 'PRELIMINARY_ORDERING', 'FINAL_ORDERING', 'FINISHED', 'CANCELLED');
 CREATE TYPE list_type AS ENUM ('EVENT', 'WAITLIST', 'WAITLIST_HOLDING');
 CREATE TYPE event_status_determinant AS ENUM ('AUTOMATIC', 'MANUAL');
 CREATE TYPE user_group_type AS ENUM ('EVENT_ELIGIBILITY', 'APPLICATION_ROLE', 'USER_CHARACTERISTIC', 'OTHER');
@@ -17,9 +17,11 @@ CREATE TABLE user_groups (
 
 -- Profiles (Public user data linked to auth.users)
 CREATE TABLE profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  auth_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  name TEXT
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  auth_user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT UNIQUE,
+  name TEXT,
+  auth_method TEXT
 );
 
 CREATE TABLE profile_groups (
@@ -107,7 +109,7 @@ ALTER TABLE registration_requests ENABLE ROW LEVEL SECURITY;
 
 -- Policies (Simple open policies for now, refine later)
 CREATE POLICY "Public profiles are viewable by everyone" ON profiles FOR SELECT USING (true);
-CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = auth_user_id);
 
 CREATE POLICY "User groups are viewable by everyone" ON user_groups FOR SELECT USING (true);
 CREATE POLICY "Profile groups are viewable by everyone" ON profile_groups FOR SELECT USING (true);
