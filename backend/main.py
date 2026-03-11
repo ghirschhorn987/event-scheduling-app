@@ -15,7 +15,7 @@ from models import (
     GroupMemberAction, GroupMembersAction, UserGroupsUpdate, UserGroupMetadataUpdate,
     EventTypeCreate, EventTypeUpdate, EventStatusUpdate, CancelledDate, BulkUserCreate
 )
-from mock_google_service import sync_to_google
+from google_service import sync_to_google
 from logic import enrich_event, randomize_holding_queue, promote_from_holding, check_signup_eligibility, determine_event_status, resequence_holding, parse_interval_to_minutes, generate_future_events
 from email_service import email_service
 
@@ -205,7 +205,6 @@ async def list_user_groups(request: Request):
             "id": row["id"],
             "name": row["name"],
             "description": row["description"],
-            "google_group_id": row.get("google_group_id"),
             "group_email": row.get("group_email"),
             "guest_limit": row.get("guest_limit", 0),
             "group_type": row.get("group_type", "OTHER"),
@@ -223,7 +222,6 @@ async def update_user_group(group_id: str, body: UserGroupMetadataUpdate, reques
     update_data = {}
     if body.name is not None: update_data["name"] = body.name
     if body.description is not None: update_data["description"] = body.description
-    if body.google_group_id is not None: update_data["google_group_id"] = body.google_group_id
     if body.group_email is not None: update_data["group_email"] = body.group_email
     if body.guest_limit is not None: update_data["guest_limit"] = body.guest_limit
     if body.group_type is not None: update_data["group_type"] = body.group_type

@@ -97,7 +97,6 @@ class UserGroupsUpdate(BaseModel):
 class UserGroupMetadataUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    google_group_id: Optional[str] = None
     group_email: Optional[str] = None
     guest_limit: Optional[int] = None
     group_type: Optional[str] = None

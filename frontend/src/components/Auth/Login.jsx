@@ -18,7 +18,7 @@ export default function Login() {
                 <span>
                     You must request access before being able to log in. See registration instructions below.
                     <br /><br />
-                    If you have already registered but haven't received a response within 48 hours, please contact support at support@skeddle.club.
+                    If you have already registered but haven't received a response within 48 hours, please contact support at support@skeddle.net.
                 </span>
             )
         }
@@ -68,7 +68,7 @@ export default function Login() {
                         <span>
                             You must request access before being able to log in. See registration instructions below.
                             <br /><br />
-                            If you have already registered but haven't received a response within 48 hours, please contact support at support@skeddle.club.
+                            If you have already registered but haven't received a response within 48 hours, please contact support at support@skeddle.net.
                         </span>
                     )
                 }

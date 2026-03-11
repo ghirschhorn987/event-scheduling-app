@@ -53,6 +53,6 @@ def check_next_event():
 
 if __name__ == "__main__":
     u1_groups = check_user("ghirschhorn987@gmail.com")
-    u2_groups = check_user("test2@skeddle.club")
+    u2_groups = check_user("test2@skeddle.net")
     
     check_next_event()

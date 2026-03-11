@@ -18,7 +18,6 @@ const AdminGroupDetail = ({ session }) => {
     const [editForm, setEditForm] = useState({
         name: "",
         description: "",
-        google_group_id: "",
         group_email: "",
         guest_limit: 0,
         group_type: "OTHER"
@@ -34,7 +33,6 @@ const AdminGroupDetail = ({ session }) => {
             setEditForm({
                 name: group.name || "",
                 description: group.description || "",
-                google_group_id: group.google_group_id || "",
                 group_email: group.group_email || "",
                 guest_limit: group.guest_limit || 0,
                 group_type: group.group_type || "OTHER"
@@ -282,22 +280,12 @@ const AdminGroupDetail = ({ session }) => {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-gray-400 mb-1">Google Group ID</label>
-                                        <input
-                                            type="text"
-                                            value={editForm.google_group_id}
-                                            onChange={(e) => setEditForm({ ...editForm, google_group_id: e.target.value })}
-                                            placeholder="e.g. users@skeddle.club"
-                                            className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
-                                        />
-                                    </div>
-                                    <div>
                                         <label className="block text-xs text-gray-400 mb-1">Group Email</label>
                                         <input
                                             type="email"
                                             value={editForm.group_email}
                                             onChange={(e) => setEditForm({ ...editForm, group_email: e.target.value })}
-                                            placeholder="e.g. notify@skeddle.club"
+                                            placeholder="e.g. notify@skeddle.net"
                                             className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm focus:ring-1 focus:ring-blue-500 outline-none"
                                         />
                                     </div>
@@ -341,7 +329,6 @@ const AdminGroupDetail = ({ session }) => {
                                                     setEditForm({
                                                         name: group.name || "",
                                                         description: group.description || "",
-                                                        google_group_id: group.google_group_id || "",
                                                         group_email: group.group_email || "",
                                                         guest_limit: group.guest_limit || 0,
                                                         group_type: group.group_type || "OTHER"
@@ -357,10 +344,6 @@ const AdminGroupDetail = ({ session }) => {
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    <div>
-                                        <div className="text-xs text-gray-500">Google Group ID</div>
-                                        <div className="text-white font-mono text-sm">{group.google_group_id || <span className="text-gray-600 italic">Not Set</span>}</div>
-                                    </div>
                                     <div>
                                         <div className="text-xs text-gray-500">Group Email</div>
                                         <div className="text-white font-mono text-sm">

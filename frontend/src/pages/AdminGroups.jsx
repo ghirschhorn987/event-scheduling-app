@@ -111,7 +111,6 @@ const AdminGroups = ({ session }) => {
                                 <th className="p-4 border-b border-slate-700">Type</th>
                                 <th className="p-4 border-b border-slate-700">Description</th>
                                 <th className="p-4 border-b border-slate-700 text-center">Users</th>
-                                <th className="p-4 border-b border-slate-700">Google Group ID</th>
                                 <th className="p-4 border-b border-slate-700">Group Email</th>
                                 <th className="p-4 border-b border-slate-700 text-right">Actions</th>
                             </tr>
@@ -124,9 +123,9 @@ const AdminGroups = ({ session }) => {
                                     </td>
                                     <td className="p-4">
                                         <span className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${group.group_type === 'EVENT_ELIGIBILITY' ? 'bg-blue-900/50 text-blue-300 border border-blue-800' :
-                                                group.group_type === 'APPLICATION_ROLE' ? 'bg-emerald-900/50 text-emerald-300 border border-emerald-800' :
-                                                    group.group_type === 'USER_CHARACTERISTIC' ? 'bg-purple-900/50 text-purple-300 border border-purple-800' :
-                                                        'bg-slate-700 text-slate-300'
+                                            group.group_type === 'APPLICATION_ROLE' ? 'bg-emerald-900/50 text-emerald-300 border border-emerald-800' :
+                                                group.group_type === 'USER_CHARACTERISTIC' ? 'bg-purple-900/50 text-purple-300 border border-purple-800' :
+                                                    'bg-slate-700 text-slate-300'
                                             }`}>
                                             {group.group_type ? group.group_type.replace(/_/g, ' ') : "OTHER"}
                                         </span>
@@ -140,11 +139,6 @@ const AdminGroups = ({ session }) => {
                                         <span className="bg-blue-600 text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
                                             {group.user_count} Users
                                         </span>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="font-mono text-xs text-slate-500 uppercase whitespace-nowrap">
-                                            {group.google_group_id || <span className="opacity-30 italic">Not Set</span>}
-                                        </div>
                                     </td>
                                     <td className="p-4">
                                         <div className="text-sm text-slate-300 whitespace-nowrap">

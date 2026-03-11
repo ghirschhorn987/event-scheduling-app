@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 # Add parent directory to path to import logic
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from logic import check_signup_eligibility, process_holding_queue
+from logic import check_signup_eligibility, randomize_holding_queue
 
 # Mock Event Data
 def get_mock_event(now_dt):
@@ -37,12 +37,14 @@ def test_signup_eligibility_tier1_early():
     now = datetime(2026, 2, 10, 10, 0, 0, tzinfo=timezone.utc)
     event = get_mock_event(now) # Reserve opens now, Roster opens in 20h
     
-    # User groups
     user_groups = ["group_roster"]
+    
+    # We need to set a valid status to trigger the check instead of 'Unknown' fallback
+    event["status"] = "NOT_YET_OPEN"
     
     result = check_signup_eligibility(event, user_groups, now)
     assert result["allowed"] == False
-    assert "Not yet open for Roster members" in result["error_message"]
+    assert "Event signups are not yet open" in result["error_message"]
 
 def test_signup_eligibility_tier1_open():
     # Tier 1 user, inside roster window -> Allowed (EVENT)
@@ -56,9 +58,12 @@ def test_signup_eligibility_tier1_open():
     event_start = event["roster_sign_up_open"] + timedelta(hours=4)
     roster_open_time = event["roster_sign_up_open"]
     
-    current_time = roster_open_time + timedelta(minutes=1)
+    current_time = event["roster_sign_up_open"] + timedelta(minutes=1)
     
     user_groups = ["group_roster"]
+    
+    # Since event is a mock, `status` may be None or "SCHEDULED".
+    event["status"] = "OPEN_FOR_ROSTER" # explicitly enforce mock behavior
     
     result = check_signup_eligibility(event, user_groups, current_time)
     assert result["allowed"] == True
@@ -76,6 +81,7 @@ def test_signup_eligibility_tier2_holding():
     event = get_mock_event(now) # Reserve opens NOW.
     
     user_groups = ["group_p1"]
+    event["status"] = "OPEN_FOR_RESERVES"
     
     result = check_signup_eligibility(event, user_groups, now + timedelta(minutes=1))
     assert result["allowed"] == True
@@ -92,6 +98,7 @@ def test_signup_eligibility_tier3_post_scheduling():
     current_time = event["final_reserve_scheduling"] + timedelta(minutes=1)
     
     user_groups = ["group_p2"]
+    event["status"] = "FINAL_ORDERING"
     
     result = check_signup_eligibility(event, user_groups, current_time)
     assert result["allowed"] == True
@@ -107,45 +114,26 @@ def test_signup_eligibility_non_member():
     assert result["allowed"] == False
     assert "No valid membership" in result["error_message"]
 
-def test_process_holding_queue_logic():
-    # 2 Early P1, 2 Early P2, 2 Late P1
-    # Initial Scheduling Time = T
-    
-    t_minus_10 = datetime(2026, 2, 10, 9, 50, 0, tzinfo=timezone.utc)
-    t_initial = datetime(2026, 2, 10, 10, 0, 0, tzinfo=timezone.utc)
-    t_plus_10 = datetime(2026, 2, 10, 10, 10, 0, tzinfo=timezone.utc)
-    
+def test_randomize_holding_queue_logic():
     users = [
-        {"id": "p1_early_1", "tier": 2, "created_at": t_minus_10.isoformat()},
-        {"id": "p1_early_2", "tier": 2, "created_at": t_minus_10.isoformat()},
-        {"id": "p2_early_1", "tier": 3, "created_at": t_minus_10.isoformat()},
-        {"id": "p2_early_2", "tier": 3, "created_at": t_minus_10.isoformat()},
-        {"id": "p1_late_1", "tier": 2, "created_at": t_plus_10.isoformat()}, # Late users are just appended
+        {"id": "p1_1", "tier": 2},
+        {"id": "p1_2", "tier": 2},
+        {"id": "p2_1", "tier": 3},
+        {"id": "p2_2", "tier": 3},
+        {"id": "other", "tier": 1},
     ]
     
-    # We need to simulate the initial_reserve_scheduling check
-    # logic.py needs a param for 'initial_reserve_scheduling_time'
-    
-    sorted_users = process_holding_queue(users, t_initial)
+    sorted_users = randomize_holding_queue(users)
     
     assert len(sorted_users) == 5
     
-    # Late user must be last
-    assert sorted_users[-1]["id"] == "p1_late_1"
+    # Tier 2s come first
+    assert sorted_users[0]["tier"] == 2
+    assert sorted_users[1]["tier"] == 2
     
-    # First 4 should be the early ones
-    early_batch = sorted_users[:4]
+    # Tier 3s come next
+    assert sorted_users[2]["tier"] == 3
+    assert sorted_users[3]["tier"] == 3
     
-    # Within early batch, Tier 2 must be before Tier 3
-    # Tier 2s: p1_early_1, p1_late_... wait late is excluded.
-    # Tier 2s (Early): p1_early_1, p1_early_2
-    # Tier 3s (Early): p2_early_1, p2_early_2
-    
-    p1_indices = [i for i, u in enumerate(early_batch) if u["tier"] == 2]
-    p2_indices = [i for i, u in enumerate(early_batch) if u["tier"] == 3]
-    
-    assert len(p1_indices) == 2
-    assert len(p2_indices) == 2
-    
-    # All P1s must be before All P2s
-    assert max(p1_indices) < min(p2_indices)
+    # Others at the end
+    assert sorted_users[4]["tier"] == 1

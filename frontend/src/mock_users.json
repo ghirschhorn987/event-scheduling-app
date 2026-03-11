@@ -49,7 +49,7 @@
   },
   {
     "id": "6a8750c3-9ffd-4259-9fee-93acd7531fe4",
-    "email": "admin@skeddle.club",
+    "email": "admin@skeddle.net",
     "name": "Real Admin",
     "groups": [
       "Super Admin"
@@ -57,7 +57,7 @@
   },
   {
     "id": "46110853-2e34-471c-9ffa-39c2da0dc3c2",
-    "email": "test2@skeddle.club",
+    "email": "test2@skeddle.net",
     "name": "Test User Multi",
     "groups": [
       "FirstPriority",

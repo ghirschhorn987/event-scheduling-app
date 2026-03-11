@@ -1,4 +1,4 @@
--- Script to create a test user 'test1@skeddle.club' with password 'test1'
+-- Script to create a test user 'test1@skeddle.net' with password 'test1'
 -- Run this in the Supabase SQL Editor
 
 -- Ensure pgcrypto is available for password hashing
@@ -7,7 +7,7 @@ create extension if not exists pgcrypto;
 DO $$
 DECLARE
   new_user_id uuid := gen_random_uuid();
-  user_email text := 'test1@skeddle.club';
+  user_email text := 'test1@skeddle.net';
   user_password text := 'test1';
   user_name text := 'Test User 1';
 BEGIN

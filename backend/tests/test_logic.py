@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 # Add parent directory to path to import logic
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from logic import enrich_event, process_holding_queue, calculate_promotions
+from logic import enrich_event, randomize_holding_queue, promote_from_holding
 
 def test_enrich_event():
     # Helper to create a naive datetime and force it to match logic's expectation if needed
@@ -40,39 +40,37 @@ def test_enrich_event():
     assert enriched["roster_sign_up_open"] == event_dt - timedelta(minutes=60)
     assert enriched["reserve_sign_up_open"] == event_dt - timedelta(minutes=120)
 
-def test_process_holding_queue_sorting():
-    # Mix of window 1 (no seq or negative) and window 2 (seq > 0)
+def test_randomize_holding_queue_sorting():
+    # Only Tier 2 and Tier 3 matter for randomization logic
     users = [
-        {"id": "u1", "sequence_number": -1},
-        {"id": "u2", "sequence_number": None},
-        {"id": "u3", "sequence_number": 5},
-        {"id": "u4", "sequence_number": 2},
-        {"id": "u5", "sequence_number": 10}
+        {"id": "u1", "tier": 3},
+        {"id": "u2", "tier": 2},
+        {"id": "u3", "tier": 3},
+        {"id": "u4", "tier": 2},
+        {"id": "u5", "tier": 1} # Others appended at the end
     ]
     
-    sorted_queue = process_holding_queue(users)
+    sorted_queue = randomize_holding_queue(users)
     
     assert len(sorted_queue) == 5
     
-    # Window 2 should be at the END, sorted by sequence
-    # Window 1 (u1, u2) -> Window 2 (u4, u3, u5)
+    # Tier 2 should be first, then Tier 3, then Others
+    assert sorted_queue[0]["tier"] == 2
+    assert sorted_queue[1]["tier"] == 2
     
-    # Check Window 2 order
-    assert sorted_queue[-3]["id"] == "u4" # seq 2
-    assert sorted_queue[-2]["id"] == "u3" # seq 5
-    assert sorted_queue[-1]["id"] == "u5" # seq 10
+    assert sorted_queue[2]["tier"] == 3
+    assert sorted_queue[3]["tier"] == 3
     
-    # Check Window 1 is at start
-    assert sorted_queue[0]["id"] in ["u1", "u2"]
-    assert sorted_queue[1]["id"] in ["u1", "u2"]
+    # Others at the end
+    assert sorted_queue[4]["tier"] == 1
 
-def test_calculate_promotions_all_roster():
+def test_promote_from_holding_all_roster():
     queue = [{"id": "u1"}, {"id": "u2"}]
     current_roster = 10
     max_signups = 15
     current_waitlist = 0
     
-    updates = calculate_promotions(queue, current_roster, max_signups, current_waitlist)
+    updates = promote_from_holding(queue, current_roster, max_signups, current_waitlist)
     
     assert len(updates) == 2
     assert updates[0]["list_type"] == "EVENT"
@@ -81,13 +79,13 @@ def test_calculate_promotions_all_roster():
     assert updates[1]["list_type"] == "EVENT"
     assert updates[1]["sequence_number"] == 12
 
-def test_calculate_promotions_overflow_to_waitlist():
+def test_promote_from_holding_overflow_to_waitlist():
     queue = [{"id": "u1"}, {"id": "u2"}, {"id": "u3"}]
     current_roster = 14
     max_signups = 15
     current_waitlist = 5
     
-    updates = calculate_promotions(queue, current_roster, max_signups, current_waitlist)
+    updates = promote_from_holding(queue, current_roster, max_signups, current_waitlist)
     
     # u1 -> Roster (15)
     # u2 -> Waitlist (6)

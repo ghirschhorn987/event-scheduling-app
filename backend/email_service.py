@@ -25,7 +25,7 @@ class EmailService:
 
         try:
             params = {
-                "from": "Skeddle <support@skeddle.club>", # Updated to verified domain
+                "from": "Skeddle <support@skeddle.net>", # Updated to verified domain
                 "to": [to_email],
                 "subject": subject,
                 "html": html_content,
@@ -43,7 +43,7 @@ class EmailService:
             <body>
                 <p>Hi {name},</p>
                 <p>We have received your request to register for the Skeddle App.</p>
-                <p>Please wait for a reply. If you do not hear back within 48 hours, please contact <a href="mailto:support@skeddle.club">support@skeddle.club</a>.</p>
+                <p>Please wait for a reply. If you do not hear back within 48 hours, please contact <a href="mailto:support@skeddle.net">support@skeddle.net</a>.</p>
                 <br>
                 <p>Best regards,</p>
                 <p>The Skeddle Team</p>
@@ -53,11 +53,11 @@ class EmailService:
         return self._send(to_email, subject, html)
 
     def send_admin_notification(self, request_data: dict):
-        admin_email = "support@skeddle.club"
+        admin_email = "support@skeddle.net"
         subject = f"New Registration Request: {request_data.get('full_name', 'Unknown')}"
         
         # Link to admin dashboard (assuming localhost or deployed url, let's use a generic relative path for now or just text)
-        admin_link = "https://skeddle.club/admin" # Updated to production URL
+        admin_link = "https://bethamhoops.skeddle.net/admin" # Updated to production URL
 
         html = f"""
         <html>
@@ -116,7 +116,7 @@ class EmailService:
 
     def send_access_granted(self, to_email: str, name: str):
         subject = "Welcome to Skeddle - Access Approved"
-        signup_link = "https://skeddle.club/signup"
+        signup_link = "https://bethamhoops.skeddle.net/signup"
         html = f"""
         <html>
             <body style="font-family: sans-serif; color: #333; line-height: 1.5;">
@@ -179,7 +179,7 @@ class EmailService:
                     <p><strong>Date:</strong> {date_str}</p>
                 </div>
                 <p>Please log in to your account to sign up or opt-out.</p>
-                <p><a href="https://skeddle.club" style="background-color: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Go to Skeddle</a></p>
+                <p><a href="https://bethamhoops.skeddle.net" style="background-color: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Go to Skeddle</a></p>
                 <br>
                 <p>Best,<br>The Skeddle Team</p>
             </body>
@@ -202,7 +202,7 @@ class EmailService:
                     <p><strong>Date:</strong> {date_str}</p>
                 </div>
                 <p>Please log in to add your name to the holding queue. The preliminary schedule will be finalized soon.</p>
-                <p><a href="https://skeddle.club" style="background-color: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Go to Skeddle</a></p>
+                <p><a href="https://bethamhoops.skeddle.net" style="background-color: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Go to Skeddle</a></p>
                 <br>
                 <p>Best,<br>The Skeddle Team</p>
             </body>
@@ -231,7 +231,7 @@ class EmailService:
                     <p><strong>Date:</strong> {date_str}</p>
                 </div>
                 <p>Please log in to check the event page. If you are on the list but can no longer attend, please remove yourself immediately to allow others to play.</p>
-                <p><a href="https://skeddle.club" style="background-color: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Go to Skeddle</a></p>
+                <p><a href="https://bethamhoops.skeddle.net" style="background-color: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Go to Skeddle</a></p>
                 <br>
                 <p>Best,<br>The Skeddle Team</p>
             </body>
@@ -264,7 +264,7 @@ class EmailService:
                     <p><strong>Date:</strong> {date_str}</p>
                 </div>
                 <p><strong>IMPORTANT:</strong> If anything changes and you cannot play, you MUST remove your signup to allow the waitlist to move up.</p>
-                <p><a href="https://skeddle.club" style="background-color: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Check Roster</a></p>
+                <p><a href="https://bethamhoops.skeddle.net" style="background-color: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Check Roster</a></p>
                 <br>
                 <p>Best,<br>The Skeddle Team</p>
             </body>
@@ -294,7 +294,7 @@ class EmailService:
                 </div>
                 <p><strong>{dropout_name}</strong> has dropped out of the event.</p>
                 {promoted_text}
-                <p><a href="https://skeddle.club" style="background-color: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Review the Roster</a></p>
+                <p><a href="https://bethamhoops.skeddle.net" style="background-color: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Review the Roster</a></p>
                 <br>
                 <p>Best,<br>The Skeddle Team</p>
             </body>

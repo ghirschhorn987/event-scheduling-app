@@ -9,7 +9,7 @@ key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 supabase = create_client(url, key)
 
 def recreate_test1():
-    email = "test1@skeddle.club"
+    email = "test1@skeddle.net"
     password = "test1test1"
     name = "test1"  # Matching email username per request
     

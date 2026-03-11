@@ -160,16 +160,16 @@ def seed_data(groups_map):
         if u: mock_users.append(u)
 
     # 3. Specific Users
-    # admin@skeddle.club -> Super Admin
-    u = create_user_with_groups("admin@skeddle.club", "adminadmin", "Real Admin", ["Super Admin"], groups_map)
+    # admin@skeddle.net -> Super Admin
+    u = create_user_with_groups("admin@skeddle.net", "adminadmin", "Real Admin", ["Super Admin"], groups_map)
     if u: mock_users.append(u)
 
-    # test1@skeddle.club -> Admin
-    u = create_user_with_groups("test1@skeddle.club", "test1test1", "Test Admin", ["Admin"], groups_map)
+    # test1@skeddle.net -> Admin
+    u = create_user_with_groups("test1@skeddle.net", "test1test1", "Test Admin", ["Admin"], groups_map)
     if u: mock_users.append(u)
 
-    # test2@skeddle.club -> Primary + Secondary
-    u = create_user_with_groups("test2@skeddle.club", "test2test2", "Test User Multi", ["Primary", "Secondary"], groups_map)
+    # test2@skeddle.net -> Primary + Secondary
+    u = create_user_with_groups("test2@skeddle.net", "test2test2", "Test User Multi", ["Primary", "Secondary"], groups_map)
     if u: mock_users.append(u)
 
     # Save to JSON for frontend toolbar
