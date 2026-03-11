@@ -19,10 +19,28 @@ This document tracks all remaining tasks for the Sport Event Scheduling App. Ful
 
 ## 3. Ongoing Bug Fixes
 
+ *   Admin Trigger Scheduler gives error "Error: Unauthorized"/ Fix this.
+
 *   **General Bug Fixes:** 
     *   Fix "Cancelled Date" timezone issue (where dates might shift due to UTC conversion).
     *   Fix "Guest Placement Bug" (ensuring guests are correctly prioritized/placed in the waitlist).
     *   **Status:** Partially Implemented (Awaiting specific identification during manual testing).
+
+## 4. Email System & Communication
+
+*   **Email System Audit:**
+    *   Document all system-generated emails, including triggers (when), recipients (who), and content.
+    *   Update user documentation to clearly explain the automated email workflow.
+*   **Support Channel:**
+    *   Add a feature for users to report problems or send direct inquiries to the administrator.
+
+## 5. UI/UX & Terminology Refinement
+
+*   **Terminology Audit:**
+    *   Identify and replace instances of "roster" within the signup sequence with more appropriate terms (e.g., "signup list"). Note that  "roster" is correctly used to refer to user groups sometimes -- do not change those references.
+
+*   **Auth Method Accuracy:**
+    *   On user admin page, the authentication method of every user says email even though I know some users use Google authentication.  Fix this.
 
 ---
 

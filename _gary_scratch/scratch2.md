@@ -60,7 +60,22 @@ THe list on Manage Event Lists should show the current counts for the different 
 
 
 
+On user admin page, the authentication method of every user says email even though I know some users use Google authentication.  Can you fix this?
 
+For system sent emails:
+- Can you list what emails are sent out, when, to use, and content?
+- Can you update user documentation to explain when different emails are sent out?
 
+Admin Trigger Scheduler gives error "Error: Unauthorized".  Can you fix this?
 
+Saw use of "roster" somewhere in signup sequence
 
+Add ability for someone to report problem or send email to admin
+
+For help page documentation:
+- Full gramaticall sentences are not needed -- clauses are fine.
+- Event visibilty phase:  Simplify this. No need to talk about event generation. Just focus on where events can be found, and that they show current status (who signups are open for) and who has signed up so far
+- Roster sign-up phase: Remove Tier 1 -- just say Roster Members.  Change "Core roster members" to just "roster members"
+- Reserve Holding Phase: Remove Tier 2 & Tier 3 -- just say "Reserves". For the last bullet point that refers to Tier2 and Tier3, change to say that reserves are split into first and second priority and then explain how the randomization and ordering works
+- Preliminary & Final Ordering: the concepts are perfect -- just shorten text.
+- Important Rule section:  Change the title from focusing on dropping out early to focusing on removing oneself.  Simplify the text.

@@ -10,44 +10,44 @@ export default function Help({ session }) {
                 <div className="space-y-6">
                     <section className="bg-slate-800 p-6 rounded-lg border border-slate-700">
                         <h2 className="text-xl font-bold text-white mb-2">1. Event Visibility</h2>
-                        <ul className="list-disc pl-5 text-gray-300 space-y-2">
-                            <li>Events are generated automatically and appear under the <strong>Events</strong> page.</li>
-                            <li>You can see the status of the event, indicating who is currently allowed to sign up.</li>
+                        <ul className="list-disc pl-5 text-gray-300 space-y-1">
+                            <li>Found on the <strong>Events</strong> page.</li>
+                            <li>Shows current status and active sign-up windows.</li>
+                            <li>Lists all players currently signed up.</li>
                         </ul>
                     </section>
 
                     <section className="bg-slate-800 p-6 rounded-lg border border-slate-700">
                         <h2 className="text-xl font-bold text-blue-400 mb-2">2. Roster Sign-up Phase</h2>
-                        <ul className="list-disc pl-5 text-gray-300 space-y-2">
-                            <li><strong>Who:</strong> Tier 1 (Roster Members)</li>
-                            <li>When the event first opens, only core roster members can sign up directly to the main Event List.</li>
-                            <li>If the main list fills up, roster members can still join the Waitlist.</li>
+                        <ul className="list-disc pl-5 text-gray-300 space-y-1">
+                            <li><strong>Who:</strong> Roster members.</li>
+                            <li>Sign up directly for the event or join waitlist if full.</li>
                         </ul>
                     </section>
 
                     <section className="bg-slate-800 p-6 rounded-lg border border-slate-700">
                         <h2 className="text-xl font-bold text-yellow-400 mb-2">3. Reserve Holding Phase</h2>
-                        <ul className="list-disc pl-5 text-gray-300 space-y-2">
-                            <li><strong>Who:</strong> Tier 2 & Tier 3 (Reserves)</li>
-                            <li>When the reserve window opens, reserves can add themselves to the <strong>Holding Area</strong>.</li>
-                            <li>This is not a first-come, first-served queue! All names sit in the holding area until the system randomly shuffles them at the end of the window.</li>
-                            <li>Tier 2 members are randomized and placed first, followed by Tier 3 members.</li>
+                        <ul className="list-disc pl-5 text-gray-300 space-y-1">
+                            <li><strong>Who:</strong> Reserves.</li>
+                            <li>Names added to the <strong>Holding Area</strong> (not first-come, first-served).</li>
+                            <li>Once window ends, reserves are split into first and second priority.</li>
+                            <li>System randomizes each priority group to determine final assignment order.</li>
                         </ul>
                     </section>
 
                     <section className="bg-slate-800 p-6 rounded-lg border border-slate-700">
                         <h2 className="text-xl font-bold text-emerald-400 mb-2">4. Preliminary & Final Ordering</h2>
-                        <ul className="list-disc pl-5 text-gray-300 space-y-2">
-                            <li>Once the holding period ends, the system assigns everyone in the holding area to either the main <strong>Event</strong> or the <strong>Waitlist</strong>.</li>
-                            <li>From this point on, it is an <strong>Open Access</strong> phase. Anyone can sign up, and they are added to the end of the waitlist on a first-come, first-served basis.</li>
-                            <li>If a player on the main list drops out, the first person on the waitlist is automatically promoted.</li>
+                        <ul className="list-disc pl-5 text-gray-300 space-y-1">
+                            <li>Holding area members moved to <strong>Event</strong> or <strong>Waitlist</strong> after randomization.</li>
+                            <li>Open access phase follows: anyone can join the end of the waitlist.</li>
+                            <li>Automatic promotion from waitlist if a spot opens up.</li>
                         </ul>
                     </section>
 
                     <section className="bg-slate-800 p-6 rounded-lg border border-slate-700 border-l-4 border-l-red-500">
-                        <h2 className="text-xl font-bold text-red-400 mb-2">Important Rule: Please Drop Out Early!</h2>
+                        <h2 className="text-xl font-bold text-red-400 mb-2">Removing Yourself</h2>
                         <p className="text-gray-300">
-                            If you sign up but later realize you cannot attend, <strong>you MUST remove yourself</strong> from the list as soon as possible. This allows the system to automatically promote the next person on the waitlist and notify them in time.
+                            If you can no longer attend, <strong>remove yourself</strong> immediately. This enables automatic promotion and timely notification for others on the waitlist.
                         </p>
                     </section>
                 </div>

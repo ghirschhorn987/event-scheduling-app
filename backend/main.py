@@ -338,7 +338,7 @@ async def remove_group_member(group_id: str, profile_id: str, request: Request):
 @app.get("/api/admin/profiles")
 async def list_profiles(request: Request):
     await get_current_admin(request)
-    res = supabase.table("profiles").select("id, name, email").order("name").execute()
+    res = supabase.table("profiles").select("id, name, email, auth_method").order("name").execute()
     return {"status": "success", "data": res.data}
 
 @app.get("/api/admin/profiles/{profile_id}")
@@ -346,7 +346,7 @@ async def get_profile(profile_id: str, request: Request):
     await get_current_admin(request)
     # Join with groups
     res = supabase.table("profiles")\
-        .select("id, name, email, profile_groups(group_id)")\
+        .select("id, name, email, auth_method, profile_groups(group_id)")\
         .eq("id", profile_id)\
         .maybe_single()\
         .execute()
