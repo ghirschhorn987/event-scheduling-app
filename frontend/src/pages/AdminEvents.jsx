@@ -317,7 +317,7 @@ const AdminEvents = ({ session }) => {
                                         {cancelledDates.map((cd) => (
                                             <tr key={cd.date} className="hover:bg-slate-700/30 transition-colors">
                                                 <td className="px-6 py-4 font-medium text-white">
-                                                    {new Date(cd.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                                    {new Date(cd.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                                                 </td>
                                                 <td className="px-6 py-4">{cd.reason || '-'}</td>
                                                 <td className="px-6 py-4 text-right">

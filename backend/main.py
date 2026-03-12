@@ -167,6 +167,10 @@ def get_max_holding_sequence(event_id: str) -> int:
 async def health_check():
     return {"status": "ok", "message": "Backend is running"}
 
+@app.get("/api")
+async def api_root():
+    return {"status": "ok", "message": "Event Scheduling API", "version": "1.0.0"}
+
 @app.post("/api/request-access")
 async def request_access(body: RegistrationRequest):
     """
@@ -811,7 +815,9 @@ async def list_cancelled_dates(request: Request):
     
     try:
         # Fetch dates >= today
-        today = datetime.now().strftime("%Y-%m-%d")
+        # Use localized today to avoid skipping dates that are today in LA but tomorrow in UTC
+        now_la = datetime.now(pytz.timezone("America/Los_Angeles"))
+        today = now_la.strftime("%Y-%m-%d")
         res = supabase.table("cancelled_dates").select("*").gte("date", today).order("date").execute()
         return {"status": "success", "data": res.data}
     except Exception as e:
@@ -1124,12 +1130,12 @@ async def signup(body: SignupRequest, request: Request):
             event_status = event.get('status')
             
             if event_status in ["OPEN_FOR_ROSTER", "OPEN_FOR_RESERVES", "PRELIMINARY_ORDERING"]:
-                # Guest goes to WAITLIST specifically, not EVENT/HOLDING.
-                # Since we sort by sequence, we just stick them at the bottom of the Waitlist.
-                # (Later, they will be processed before reserves in the scheduler, but for now they just go to WAITLIST).
-                final_list_type = "WAITLIST"
-                wl_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST").execute()
+                # Guest goes to WAITLIST_HOLDING specifically, not EVENT/WAITLIST.
+                # Use tier 4 (lowest priority) so they are processed after all members in FINAL_ORDERING.
+                final_list_type = "WAITLIST_HOLDING"
+                wl_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST_HOLDING").execute()
                 sequence = (wl_res.count or 0) + 1
+                eligibility["tier"] = 4 
             elif event_status == "FINAL_ORDERING":
                 # Regular FCFS flow
                 roster_count = fetch_counts(body.event_id)
@@ -1147,7 +1153,10 @@ async def signup(body: SignupRequest, request: Request):
                 wl_res = supabase.table("event_signups").select("id", count="exact").eq("event_id", body.event_id).eq("list_type", "WAITLIST").execute()
                 sequence = (wl_res.count or 0) + 1
             
-            eligibility["tier"] = 0 # Top priority for sorting technically
+            # eligibility["tier"] = 4 is already set in the blocks above as needed.
+            # If it's not set (e.g. status fallback), we should probably set it to 4 anyway.
+            if "tier" not in eligibility or eligibility["tier"] == 0:
+                eligibility["tier"] = 4
         else:
             # Regular user processing
             if target_list == "EVENT":
@@ -1381,7 +1390,7 @@ async def trigger_schedule(request: Request):
     auth_header = request.headers.get("Authorization")
     if auth_header:
         try:
-            await check_admin(request)
+            await get_current_admin(request)
             is_admin = True
         except:
             pass
@@ -1686,14 +1695,21 @@ async def serve_react_app(full_path: str):
         return FileResponse(file_path)
     
     # Serve index.html for client-side routing with no-cache headers
-    with open("static/index.html", 'r') as f:
-        content = f.read()
+    if os.path.isfile("static/index.html"):
+        with open("static/index.html", 'r') as f:
+            content = f.read()
+        return Response(
+            content=content,
+            media_type="text/html",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+        )
+    
     return Response(
-        content=content,
-        media_type="text/html",
-        headers={
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0"
-        }
+        content="Backend is running, but frontend static files are missing. In local development, use the frontend dev server on port 5173.",
+        media_type="text/plain",
+        status_code=404
     )

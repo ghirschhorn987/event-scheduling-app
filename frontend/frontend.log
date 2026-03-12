@@ -85,3 +85,4 @@ Port 5173 is in use, trying another one...
 9:31:40 PM [vite] hmr update /src/index.css, /src/pages/Dashboard.jsx
 9:31:59 PM [vite] hmr update /src/pages/EventsListPage.jsx, /src/index.css
 9:32:14 PM [vite] hmr update /src/pages/Dashboard.jsx, /src/index.css
+9:46:37 PM [vite] hmr update /src/pages/AdminEvents.jsx, /src/index.css

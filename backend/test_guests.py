@@ -69,13 +69,18 @@ def run_tests():
     print("Guest limit set successfully.")
 
     # 4. Get Existing Profile for Test User
-    print(f"\n4. Fetching existing profile...")
+    print(f"\n4. Fetching existing profile with auth_user_id...")
     try:
-        profile_res = supabase.table("profiles").select("*").limit(1).execute()
+        profile_res = supabase.table("profiles").select("*").not_.is_("auth_user_id", "null").limit(1).execute()
+        if not profile_res.data:
+            print("No profiles with auth_user_id exist in DB. Trying any profile...")
+            profile_res = supabase.table("profiles").select("*").limit(1).execute()
+        
         if not profile_res.data:
             print("No profiles exist in DB.")
             return
-        test_auth_uid = profile_res.data[0]["auth_user_id"]
+
+        test_auth_uid = profile_res.data[0]["auth_user_id"] or "mock-user-123"
         test_profile_id = profile_res.data[0]["id"]
         print(f"Using profile auth_user_id: {test_auth_uid}, profile_id: {test_profile_id}")
     except Exception as e:
@@ -121,15 +126,15 @@ def run_tests():
         guest1_id = guest1_data["id"]
 
         # Verify Waitlist/Tier
-        if guest1_data["list_type"] not in ("WAITLIST", "WAITLIST_HOLDING"):
-            print("ERROR: Guest not placed in waitlist/holding!")
+        if guest1_data["list_type"] != "WAITLIST_HOLDING":
+            print(f"ERROR: Guest not placed in WAITLIST_HOLDING! (Got: {guest1_data['list_type']})")
         else:
             print(f"SUCCESS: Guest is in {guest1_data['list_type']}")
         
-        if guest1_data["tier"] != 0:
-            print(f"ERROR: Guest tier {guest1_data['tier']} != 0")
+        if guest1_data["tier"] != 4:
+            print(f"ERROR: Guest tier {guest1_data['tier']} != 4")
         else:
-            print("SUCCESS: Guest tier is 0")
+            print("SUCCESS: Guest tier is 4")
     else:
         print("Failed to add Guest 1:", res1.status_code, res1.text)
         return
