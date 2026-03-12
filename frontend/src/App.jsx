@@ -115,6 +115,7 @@ function App() {
                         <Route path="/admin/events/:eventId" element={session ? <AdminEventDetail session={session} /> : <Navigate to="/login" />} />
                         <Route path="/help" element={session ? <Help session={session} /> : <Navigate to="/login" />} />
                         <Route path="/admin/help" element={session ? <AdminHelp session={session} /> : <Navigate to="/login" />} />
+                        <Route path="/profile" element={session ? <Profile session={session} /> : <Navigate to="/login" />} />
                         <Route path="/update-password" element={<UpdatePassword />} />
                         <Route path="/" element={<Navigate to={session ? "/dashboard" : "/login"} />} />
                     </Routes>

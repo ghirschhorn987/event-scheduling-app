@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Header from '../components/Header'
+import { formatEventDate, formatTimeUntil } from '../utils/dateUtils'
 
 export default function EventsListPage({ session }) {
     const [events, setEvents] = useState([])
@@ -142,28 +143,32 @@ export default function EventsListPage({ session }) {
                                             </h3>
                                             <div className="text-right whitespace-nowrap">
                                                 <div className="text-blue-400 font-bold text-base leading-tight">
-                                                    {dayAbbr}, <span className="text-white">{dateStr}</span>
-                                                </div>
-                                                <div className="text-gray-400 text-sm">
-                                                    {timeStr}
+                                                    {formatEventDate(event.event_date)}
                                                 </div>
                                             </div>
                                         </div>
 
                                         <div className="flex justify-between items-center mt-1">
-                                            <div className="flex items-center gap-3 text-sm">
-                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${event.status === 'OPEN_FOR_ROSTER' ? 'bg-green-900 text-green-300' :
-                                                    event.status === 'OPEN_FOR_RESERVES' ? 'bg-blue-900 text-blue-300' :
-                                                        event.status === 'PRELIMINARY_ORDERING' ? 'bg-yellow-900 text-yellow-300' :
-                                                            event.status === 'FINAL_ORDERING' ? 'bg-orange-900 text-orange-300' :
-                                                                event.status === 'CANCELLED' ? 'bg-red-900 text-red-300' :
-                                                                    'bg-gray-700 text-gray-300'
-                                                    }`}>
-                                                    {event.status.replace(/_/g, ' ')}
-                                                </span>
-                                                <span className="text-gray-400 font-mono">
-                                                    {event.counts?.roster || 0} / {reserveCount}
-                                                </span>
+                                            <div className="flex flex-col">
+                                                <div className="flex items-center gap-3 text-sm">
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${event.status === 'OPEN_FOR_ROSTER' ? 'bg-green-900 text-green-300' :
+                                                        event.status === 'OPEN_FOR_RESERVES' ? 'bg-blue-900 text-blue-300' :
+                                                            event.status === 'PRELIMINARY_ORDERING' ? 'bg-yellow-900 text-yellow-300' :
+                                                                event.status === 'FINAL_ORDERING' ? 'bg-orange-900 text-orange-300' :
+                                                                    event.status === 'CANCELLED' ? 'bg-red-900 text-red-300' :
+                                                                        'bg-gray-700 text-gray-300'
+                                                        }`}>
+                                                        {event.status.replace(/_/g, ' ')}
+                                                    </span>
+                                                    <span className="text-gray-400 font-mono">
+                                                        {event.counts?.roster || 0} / {reserveCount}
+                                                    </span>
+                                                </div>
+                                                {event.next_status && (
+                                                    <div className="text-[10px] text-gray-500 mt-1">
+                                                        Next: <span className="text-gray-400 font-bold">{event.next_status.replace(/_/g, ' ')}</span> {formatTimeUntil(event.next_status_at)}
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <Link

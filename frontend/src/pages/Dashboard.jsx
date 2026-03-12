@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Link, useParams } from 'react-router-dom'
-import { safeDate, subtractMinutes } from '../utils/dateUtils'
+import { safeDate, subtractMinutes, formatEventDate, formatTimeUntil } from '../utils/dateUtils'
 import Header from '../components/Header'
 
 export default function Dashboard({ session }) {
@@ -324,7 +324,7 @@ export default function Dashboard({ session }) {
                         <header className="mb-4 flex flex-col md:flex-row md:items-baseline md:justify-between border-b pb-2 border-slate-700">
                             <div className="flex flex-col md:flex-row md:items-baseline md:gap-4">
                                 <h2 className="text-2xl font-bold">{nextEvent.name}</h2>
-                                <p className="text-gray-400 text-sm md:text-base">{safeDate(nextEvent.event_date)}</p>
+                                <p className="text-gray-400 text-sm md:text-base">{formatEventDate(nextEvent.event_date)}</p>
                             </div>
                         </header>
 
@@ -338,15 +338,22 @@ export default function Dashboard({ session }) {
                         <div className="bg-slate-800 p-4 rounded shadow mb-6 border border-slate-700 flex flex-col md:flex-row items-center justify-between gap-4">
 
                             {/* Status Badge */}
-                            <span className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider ${nextEvent.status === 'OPEN_FOR_ROSTER' ? 'bg-green-900 text-green-300' :
-                                nextEvent.status === 'OPEN_FOR_RESERVES' ? 'bg-blue-900 text-blue-300' :
-                                    nextEvent.status === 'PRELIMINARY_ORDERING' ? 'bg-yellow-900 text-yellow-300' :
-                                        nextEvent.status === 'FINAL_ORDERING' ? 'bg-orange-900 text-orange-300' :
-                                            nextEvent.status === 'CANCELLED' ? 'bg-red-900 text-red-300' :
-                                                'bg-gray-700 text-gray-300'
-                                }`}>
-                                {nextEvent.status.replace(/_/g, ' ')}
-                            </span>
+                            <div className="flex flex-col items-center md:items-start gap-1">
+                                <span className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider ${nextEvent.status === 'OPEN_FOR_ROSTER' ? 'bg-green-900 text-green-300' :
+                                    nextEvent.status === 'OPEN_FOR_RESERVES' ? 'bg-blue-900 text-blue-300' :
+                                        nextEvent.status === 'PRELIMINARY_ORDERING' ? 'bg-yellow-900 text-yellow-300' :
+                                            nextEvent.status === 'FINAL_ORDERING' ? 'bg-orange-900 text-orange-300' :
+                                                nextEvent.status === 'CANCELLED' ? 'bg-red-900 text-red-300' :
+                                                    'bg-gray-700 text-gray-300'
+                                    }`}>
+                                    {nextEvent.status.replace(/_/g, ' ')}
+                                </span>
+                                {nextEvent.next_status && (
+                                    <div className="text-[10px] text-gray-500">
+                                        Next: <span className="text-gray-400 font-bold">{nextEvent.next_status.replace(/_/g, ' ')}</span> {formatTimeUntil(nextEvent.next_status_at)}
+                                    </div>
+                                )}
+                            </div>
 
                             {/* Counts */}
                             <div className="flex gap-4 text-sm font-medium">

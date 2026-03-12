@@ -43,22 +43,64 @@ def enrich_event(event_data, now=None):
     
     event_data["waitlist_sign_up_open"] = event_data["roster_sign_up_open"]
 
+    if now is None:
+        now = datetime.now(timezone.utc)
+
     # Calculate/Confirm Status
-    # In the new architecture, the Database is the Single Source of Truth for Status.
-    # The Cron Job updates it.
-    # HOWEVER: For backward compatibility during migration tailored to user request:
-    # If status is "SCHEDULED" (deprecated), calculate it dynamically.
-    # If status is one of the new valid ones, USE IT AS IS.
-    
     current_status = event_data.get("status")
     
+    # If legacy 'SCHEDULED', determine it
     if current_status == "SCHEDULED":
-        if now is None:
-            now = datetime.now(timezone.utc)
         event_data["status"] = determine_event_status(event_data, now)
+        current_status = event_data["status"]
+
+    # Calculate Next Status
+    # This logic mirrors determine_event_status but looks ahead
+    roster_open = event_data["roster_sign_up_open"]
+    reserve_open = event_data["reserve_sign_up_open"]
+    initial_scheduling = event_data["initial_reserve_scheduling"]
+    final_scheduling = event_data["final_reserve_scheduling"]
+    event_start = event_data["event_date"]
+    if isinstance(event_start, str):
+        event_start = datetime.fromisoformat(event_start.replace('Z', '+00:00'))
     
-    # Otherwise, trust the DB (e.g. NOT_YET_OPEN, OPEN_FOR_ROSTER, etc.)
-    # This ensures consistency between API and direct DB reads.
+    duration_min = parse_interval_to_minutes(event_data.get("duration"))
+    event_end = event_start + timedelta(minutes=duration_min)
+
+    next_status = None
+    next_status_at = None
+
+    if current_status == "NOT_YET_OPEN":
+        next_status = "OPEN_FOR_ROSTER"
+        next_status_at = roster_open
+    elif current_status == "OPEN_FOR_ROSTER":
+        next_status = "OPEN_FOR_RESERVES"
+        next_status_at = reserve_open
+    elif current_status == "OPEN_FOR_RESERVES":
+        next_status = "PRELIMINARY_ORDERING"
+        next_status_at = initial_scheduling
+    elif current_status == "PRELIMINARY_ORDERING":
+        next_status = "FINAL_ORDERING"
+        next_status_at = final_scheduling
+    elif current_status == "FINAL_ORDERING":
+        if now < event_start:
+            # We are in the pre-start phase of FINAL_ORDERING
+            # In linear terms, there isn't a status change *at* event_start, 
+            # but we could indicate the event starting.
+            # However, for the user's request "next status", 
+            # after FINAL_ORDERING starts it stays until FINISHED.
+            # But wait, determine_event_status says:
+            # elif now < event_start: return "FINAL_ORDERING"
+            # elif now < event_end: return "FINAL_ORDERING"
+            # So next transition is at event_end.
+            next_status = "FINISHED"
+            next_status_at = event_end
+        elif now < event_end:
+            next_status = "FINISHED"
+            next_status_at = event_end
+
+    event_data["next_status"] = next_status
+    event_data["next_status_at"] = next_status_at.isoformat() if next_status_at else None
 
     return event_data
 
